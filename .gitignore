@@ -1,0 +1,56 @@
+.vscode
+
+# Ignore build directories
+build
+
+# Ignore Qt Creator specific files
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+*.qmlproject.user
+*.qmlproject.user.*
+*.creator.user
+*.creator.user.*
+*.creator
+*.autosave
+
+# Ignore Qt Creator CMake specific files
+CMakeLists.txt.user
+
+# Ignore Qt Creator QML specific files
+*.qmlc
+*.jsc
+
+# Ignore Qt Creator crash reports
+*.dmp
+
+# Ignore other generated files
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.a
+*.lib
+*.ncb
+*.sdf
+*.suo
+*.pdb
+*.exe
+*.app
+*.iws
+*.ipr
+*.swp
+*.class
+*.psd
+*.db
+*.sqlite
+*.log
+
+# Ignore backup files
+*~
+*.bak
+*.old
+*.orig
+*.tmp
