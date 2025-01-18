@@ -6,19 +6,19 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>941</width>
+    <height>610</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>PichaScan</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QPushButton" name="scanButton">
     <property name="geometry">
      <rect>
-      <x>340</x>
-      <y>140</y>
+      <x>670</x>
+      <y>10</y>
       <width>75</width>
       <height>24</height>
      </rect>
@@ -27,24 +27,87 @@
      <string>Scan</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="btnFindScanners">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>10</y>
+      <width>24</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="toolTip">
+     <string>Find scanners.</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset theme="QIcon::ThemeIcon::ViewRefresh"/>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>12</width>
+      <height>12</height>
+     </size>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="comboScanners">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>10</y>
+      <width>191</width>
+      <height>24</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QGraphicsView" name="scanView">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>40</y>
+      <width>501</width>
+      <height>491</height>
+     </rect>
+    </property>
+   </widget>
   </widget>
+  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>941</width>
      <height>33</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menuScan">
+   <widget class="QMenu" name="menuFile">
     <property name="title">
-     <string>Scan</string>
+     <string>File</string>
     </property>
+    <addaction name="actionPreferences"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit_2"/>
    </widget>
-   <addaction name="menuScan"/>
+   <addaction name="menuFile"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionPreferences">
+   <property name="text">
+    <string>Preferences</string>
+   </property>
+  </action>
+  <action name="actionExit_2">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>
