@@ -44,8 +44,12 @@ void MainWindow::onScanButtonClicked() {
         return;
     }
 
+    // Use the ScanProcessor to detect & crop
+    ScanProcessor processor;
+    ScanResult scanResult = processor.detectAndCropPhotos(scannedImage);
+
     // Display the scanned image in the graphics view
-    MainWindow::displayMatInGraphicsView(scannedImage, ui->scanView);
+    MainWindow::displayMatInGraphicsView(scanResult.annotated, ui->scanView);
 
     // // Process the scanned image to find multiple photos
     // ScanProcessor processor;
