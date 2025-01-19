@@ -9,105 +9,88 @@ ScanResult ScanProcessor::detectAndCropPhotos(const cv::Mat& scannedImage)
     if (scannedImage.empty()) {
         return result;
     }
-
-    // Make a copy of the original image for annotation.
-    // We'll draw the detected rectangles/polygons on this copy.
     result.annotated = scannedImage.clone();
 
-    // 1. Convert to grayscale if needed
-    cv::Mat gray;
-    if (scannedImage.channels() == 3) {
-        cv::cvtColor(scannedImage, gray, cv::COLOR_BGR2GRAY);
-    } else {
-        gray = scannedImage.clone();
-    }
+    // 1. Get saturation channel
+    cv::Mat hsv; 
+    cv::cvtColor(scannedImage, hsv, cv::COLOR_BGR2HSV);
+    std::vector<cv::Mat> hsv_channels;
+    cv::split(hsv, hsv_channels); // Split the HSV image into its 3 channels
+    cv::Mat saturation = hsv_channels[1]; // Get the second channel (saturation)
 
-    // 2. Threshold (e.g. Otsu’s)
+    // 2. Threshhold
     cv::Mat thresh;
-    cv::threshold(gray, thresh, 128, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+    cv::threshold(saturation, thresh, 5, 255, cv::THRESH_BINARY);
 
     // 3. Find contours
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(thresh, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-       // 1. Load the scanned image
-    cv::Mat img = cv::imread("scan.jpg");
-    if (img.empty()) {
-        std::cerr << "Error: Could not open or find the image.\n";
-    }
-
-    // 2. Convert to grayscale and blur to reduce noise
-    cv::Mat gray;
-    cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
-
-    cv::Mat blurImg;
-    cv::GaussianBlur(gray, blurImg, cv::Size(5, 5), 0);
-
-    // 3. Use Canny edge detection
-    cv::Mat edges;
-    cv::Canny(blurImg, edges, 75, 200);
-
-    // 4. Find contours (external only in this case)
-    std::vector<std::vector<cv::Point>> contours;
-    std::vector<cv::Vec4i> hierarchy;
-    cv::findContours(edges, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
-    // Filter out too-small contours by area
-    double minArea = 10000.0;  // Adjust to match your expected doc sizes
-    std::vector<std::vector<cv::Point>> candidateContours;
-    for (size_t i = 0; i < contours.size(); i++) {
-        double area = cv::contourArea(contours[i]);
-        if (area > minArea) {
-            candidateContours.push_back(contours[i]);
-        }
-    }
-
-    // 5. Approximate each candidate contour and check if it’s a quadrilateral
-    std::vector<std::vector<cv::Point>> docs;
-    for (size_t i = 0; i < candidateContours.size(); i++) {
-        double perimeter = cv::arcLength(candidateContours[i], true);
-        std::vector<cv::Point> approx;
-        cv::approxPolyDP(candidateContours[i], approx, 0.02 * perimeter, true);
-
-        // If it has 4 corners, it's likely a rectangular document
-        if (approx.size() == 4) {
-            docs.push_back(approx);
-        }
-    }
-
-    // 4. Filter for large rectangles (photos)
+    // 4. Filter for large areas
+    double imgArea = scannedImage.rows * scannedImage.cols;
+    std::vector<std::vector<cv::Point>> largeContours;
     for (const auto& contour : contours) {
-        // Approximate polygon
-        std::vector<cv::Point> approx;
-        // The 10 here is a parameter controlling polygon approximation detail
-        cv::approxPolyDP(contour, approx, 10, true);
+        double contourArea = cv::contourArea(contour);
 
-        // Check if we got a quadrilateral
-        if (approx.size() == 4) {
-            // We can also check the area to exclude very small or noise
-            double area = std::fabs(cv::contourArea(approx));
-            if (area < 10000.0) {
-                // skip small
-                continue;
-            }
-
-            // Create a DetectedRegion struct
-            DetectedRegion region;
-            region.corners = approx;
-
-            // Option 1: simple bounding box crop
-            cv::Rect boundingRect = cv::boundingRect(approx);
-            region.boundingBox = boundingRect;
-            region.cropped = scannedImage(boundingRect).clone();
-
-            // Draw the quadrilateral on the annotated image
-            // (We could draw lines between approx[0]->approx[1], approx[1]->approx[2], etc.)
-            cv::polylines(result.annotated, approx, /*isClosed=*/true, 
-                          cv::Scalar(0, 0, 255), /*thickness=*/2);
-
-            // Add this region to the result
-            result.regions.push_back(std::move(region));
+        if (contourArea > (imgArea/8)) {
+            largeContours.push_back(contour);
         }
+    }
+
+    // 5. Approximate each contour and check if it's a quadrilateral
+
+    for (const auto& contour : largeContours) {
+        double perimeter = cv::arcLength(contour, true);
+
+        for (int eps=500; eps>0; eps--) {
+            std::vector<cv::Point> approx;
+            cv::approxPolyDP(contour, approx, 0.001 * eps * perimeter, true);
+
+            if (approx.size() > 3) {
+                // Create a DetectedRegion struct
+                DetectedRegion region;
+
+
+                // Bounding box
+                cv::Rect boundingRect = cv::boundingRect(approx);
+                cv::RotatedRect rotRect = cv::minAreaRect(approx);
+                // cv::Rect boundingRect = 
+                
+                region.boundingBox = boundingRect;
+                region.cropped = scannedImage(boundingRect).clone();
+
+                // cv::polylines(result.annotated, approx, /*isClosed=*/true, 
+                //             cv::Scalar(0, 0, 255), /*thickness=*/10);
+
+                // // Draw the bounding rectangle
+                // cv::rectangle(result.annotated, boundingRect, cv::Scalar(255, 0, 0), /*thickness=*/10);
+                
+                cv::Point2f vertices[4];
+                rotRect.points(vertices);
+                
+                std::vector<cv::Point> intCorners;
+                for (int i = 0; i < 4; ++i) {
+                    intCorners.push_back(cv::Point(vertices[i])); // Implicit conversion to cv::Point
+                }
+
+                region.corners = intCorners;
+
+
+
+                // Assuming intCorners is a std::vector<cv::Point> with integer points
+                for (int i = 0; i < 4; i++) {
+                    line(result.annotated, intCorners[i], intCorners[(i + 1) % 4], cv::Scalar(0, 255, 0), 5, cv::LINE_AA);
+                }
+
+                // for (int i = 0; i < 4; i++)
+                //     line(result.annotated, vertices[i], vertices[(i+1)%4], cv::Scalar(0,255,0), 5, cv::FILLED);
+
+                // Add this region to the result
+                result.regions.push_back(std::move(region));
+                break;
+            }
+        }
+
     }
 
     return result;
