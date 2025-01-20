@@ -3,9 +3,9 @@
 
 #include <QGraphicsView>
 #include <QMouseEvent> // for QMouseEvent
+#include <QPushButton>
 #include <QWheelEvent>
 #include <QWidget> // for QWidget if needed
-#include <QPushButton>
 #include <opencv2/core.hpp>
 
 class ImageEditorView : public QGraphicsView {
@@ -13,12 +13,18 @@ class ImageEditorView : public QGraphicsView {
 
 public:
     explicit ImageEditorView(QWidget *parent);
+    void positionButtons();
+
+    void updateQuads();
 
 protected:
     void wheelEvent(QWheelEvent *event) override;
     // void mousePressEvent(QMouseEvent *event) override;
     // void mouseReleaseEvent(QMouseEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
+
+signals:
+    void quadrilateralsChanged(std::vector<std::vector<cv::Point>> quads);
 
 private slots:
     void rotateSceneLeft();

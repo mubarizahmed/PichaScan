@@ -92,10 +92,28 @@ void ImageEditorView::addQuadrilateral() {
 
 
     auto *quad = new QuadrilateralItem(points, this->scene(), this->scene());
+
+    connect(quad, &QuadrilateralItem::positionChanged, this, &ImageEditorView::updateQuads);
 }
 
 void ImageEditorView::resizeEvent(QResizeEvent *event) {
     QGraphicsView::resizeEvent(event);
     // Reposition overlay on resize
+    positionButtons();
+}
+
+void ImageEditorView::positionButtons() {
     buttonOverlay->move(width() - buttonOverlay->width() - 10, 10);
+}
+
+void ImageEditorView::updateQuads() {
+    // Update all quadrilaterals
+    std::vector<std::vector<cv::Point>> quads;
+    for (auto item : scene()->items()) {
+        if (auto *quad = qgraphicsitem_cast<QuadrilateralItem *>(item)) {
+            quads.push_back(quad->getCorners());
+        }
+    }
+
+    emit quadrilateralsChanged(quads);
 }

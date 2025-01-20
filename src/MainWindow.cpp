@@ -1,6 +1,7 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 
+#include "CroppedView.h"
 #include "ImageEditorView.h"
 #include "QuadrilateralItem.h"
 #include "ScanProcessor.h"
@@ -9,6 +10,7 @@
 #include <QDebug>
 #include <QFileDialog>
 #include <QGraphicsRectItem>
+#include <QListWidget>
 #include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -25,10 +27,12 @@ MainWindow::MainWindow(QWidget *parent)
     scanView = new ImageEditorView(this);
     scanView->setBackgroundBrush(Qt::white);
     scanView->setScene(scanScene);
+    scanView->positionButtons();
 
     // Set the geometry and properties of the new scanView
     scanView->setGeometry(ui->scanView->geometry());
     scanView->setObjectName(ui->scanView->objectName());
+    scanView->setSizePolicy(ui->scanView->sizePolicy());
 
     // Add scanView to the layout or as needed
     auto parentLayout = ui->scanView->parentWidget()->layout();
@@ -48,7 +52,27 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->comboScanners, SIGNAL(currentTextChanged(QString)), this, SLOT(onScannerSelectionChanged(QString)));
 
+    connect(scanView, &ImageEditorView::quadrilateralsChanged, this, &MainWindow::updateThumbnailsList);
+
     onFindScannerButtonClicked();
+
+    scanView->positionButtons();
+    scanView->updateGeometry();
+
+    croppedView = new CroppedView(this);
+    // croppedView->setGeometry(ui->listThumbnails->geometry());
+    croppedView->setObjectName(ui->listThumbnails->objectName());
+    croppedView->setSizePolicy(ui->listThumbnails->sizePolicy());
+
+    // Add croppedView to the layout or as needed
+    auto croppedParentLayout = ui->listThumbnails->parentWidget()->layout();
+    if (croppedParentLayout) {
+        croppedParentLayout->replaceWidget(ui->listThumbnails, croppedView);
+    }
+
+    // Delete the old QListView instance
+    delete ui->listThumbnails;
+    ui->listThumbnails = croppedView;
 }
 
 MainWindow::~MainWindow() {
@@ -69,6 +93,8 @@ void MainWindow::onScanButtonClicked() {
         return;
     }
 
+    scanImage = scannedImage;
+
     // Use the ScanProcessor to detect & crop
     ScanProcessor processor;
     ScanResult scanResult = processor.detectAndCropPhotos(scannedImage);
@@ -77,9 +103,15 @@ void MainWindow::onScanButtonClicked() {
     MainWindow::displayMatInGraphicsView(scanResult.annotated, scanView, scanScene);
 
     // Add rectangles to the scanScene
+    std::vector<std::vector<cv::Point>> quads;
     for (const auto &region : scanResult.regions) {
         auto *quad = new QuadrilateralItem(region.corners, scanScene, scanScene);
+        quads.push_back(region.corners);
+        connect(quad, &QuadrilateralItem::positionChanged, scanView, &ImageEditorView::updateQuads);
     }
+
+    // Update the list of thumbnails
+    updateThumbnailsList(quads);
 }
 
 void MainWindow::onFindScannerButtonClicked() {
@@ -122,7 +154,30 @@ void MainWindow::onScannerSelectionChanged(QString scannerName) {
     scanner->setPreferredScanner(scannerNameW);
 }
 
-void MainWindow::displayMatInGraphicsView(const cv::Mat &mat, QGraphicsView *graphicsView, QGraphicsScene *scene) {
+void MainWindow::updateThumbnailsList(std::vector<std::vector<cv::Point>> quads) {
+    qDebug() << "Updating thumbnails list with " << quads.size() << " quadrilaterals.";
+    // Clear the existing listview
+    croppedView->model()->removeRows(0, croppedView->model()->rowCount());
+
+    // Use the ScanProcessor to crop the images
+    ScanProcessor processor;
+    croppedImages = processor.cropImages(scanImage, quads);
+
+    // Display the cropped images in the list
+    for (const auto &cropped : croppedImages) {
+
+        // Convert cv::Mat to QImage
+        QImage qImage = matToQImage(cropped);
+
+        // Convert QImage to QPixmap
+        QPixmap pixmap = QPixmap::fromImage(qImage);
+
+        croppedView->addImageItem(pixmap);
+    }
+    croppedView->manualResize();
+}
+
+void MainWindow::displayMatInGraphicsView(const cv::Mat &mat, ImageEditorView *graphicsView, QGraphicsScene *scene) {
     qDebug() << "Mat empty:" << mat.empty();
     qDebug() << "Mat type:" << mat.type();
     qDebug() << "Mat rows:" << mat.rows << ", cols:" << mat.cols;
@@ -143,6 +198,7 @@ void MainWindow::displayMatInGraphicsView(const cv::Mat &mat, QGraphicsView *gra
 
     // Optional: Adjust the view to fit the image
     graphicsView->fitInView(scene->itemsBoundingRect(), Qt::KeepAspectRatio);
+    graphicsView->positionButtons();
 }
 
 QImage MainWindow::matToQImage(const cv::Mat &mat) {

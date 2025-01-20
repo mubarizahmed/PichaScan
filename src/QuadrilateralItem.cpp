@@ -21,6 +21,7 @@ QuadrilateralItem::QuadrilateralItem(const std::vector<cv::Point> &points, QGrap
 
         connect(corner, &CornerItem::positionChanged, this, &QuadrilateralItem::updateLines);
         connect(corner, &CornerItem::deletePressed, this, &QuadrilateralItem::deleteQuad);
+        connect(corner, &CornerItem::positionSet, this, &QuadrilateralItem::updatePosition);
     }
 
     for (int i = 0; i < 4; i++) {
@@ -41,10 +42,23 @@ void QuadrilateralItem::updateLines() {
     }
 }
 
+void QuadrilateralItem::updatePosition() {
+    qDebug() << "QuadrilateralItem: Position updated";
+    emit positionChanged();
+}
+
 void QuadrilateralItem::deleteQuad() {
     // this->scene()->removeItem(this);
     // scene()->removeItem(this);
     delete this;
+}
+
+std::vector<cv::Point> QuadrilateralItem::getCorners() {
+    std::vector<cv::Point> points;
+    for (const auto &corner : corners) {
+        points.push_back(cv::Point(corner->pos().x(), corner->pos().y()));
+    }
+    return points;
 }
 
 // CornerItem constructor
@@ -68,6 +82,14 @@ CornerItem::CornerItem(const cv::Point &position, QGraphicsScene *scene, QObject
 void CornerItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event) {
     QGraphicsRectItem::mouseMoveEvent(event);
     emit positionChanged();
+}
+
+void CornerItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
+    if (event->button() != Qt::RightButton) {
+        emit positionSet();
+    }
+    QGraphicsRectItem::mouseReleaseEvent(event);
+
 }
 
 void CornerItem::mousePressEvent(QGraphicsSceneMouseEvent *event) {

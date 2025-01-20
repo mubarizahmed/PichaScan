@@ -34,6 +34,7 @@ public:
 
     // Returns each cropped photo as an individual Mat
     ScanResult detectAndCropPhotos(const cv::Mat& scannedImage);
+    std::vector<cv::Mat> cropImages(const cv::Mat &scannedImage, std::vector<std::vector<cv::Point>> quads);
 };
 
 

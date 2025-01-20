@@ -18,8 +18,12 @@ class QuadrilateralItem : public QObject, public QGraphicsItemGroup {
 public:
     explicit QuadrilateralItem(const std::vector<cv::Point> &points, QGraphicsScene *scene, QObject *parent = nullptr);
     void updateLines();
+    void updatePosition();
+    std::vector<cv::Point> getCorners();
 
-protected:
+signals:
+    void positionChanged();
+
 private:
     std::vector<CornerItem *> corners;
     std::vector<QGraphicsLineItem *> lines;
@@ -35,10 +39,12 @@ public:
 signals:
     void positionChanged();
     void deletePressed();
+    void positionSet();
 
 protected:
     void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
 };
 
 #endif // QUADRILATERALITEM_H
