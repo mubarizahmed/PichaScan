@@ -78,7 +78,7 @@ void MainWindow::onScanButtonClicked() {
 
     // Add rectangles to the scanScene
     for (const auto &region : scanResult.regions) {
-        auto *quad = new QuadrilateralItem(region.corners, scanScene);
+        auto *quad = new QuadrilateralItem(region.corners, scanScene, scanScene);
     }
 }
 
@@ -132,6 +132,9 @@ void MainWindow::displayMatInGraphicsView(const cv::Mat &mat, QGraphicsView *gra
 
     // Convert QImage to QPixmap
     QPixmap pixmap = QPixmap::fromImage(qImage);
+
+    // clear scene
+    scene->clear();
 
     scene->addPixmap(pixmap);
 
