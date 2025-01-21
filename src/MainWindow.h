@@ -19,7 +19,7 @@ class MainWindow : public QMainWindow {
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-    ImageEditorView *scanView;
+
 
 private slots:
 
@@ -32,13 +32,18 @@ private:
     Ui::MainWindow *ui;
 
     std::unique_ptr<ScannerInterface> scanner;
-
+    ImageEditorView *scanView;
     QGraphicsScene *scanScene;
     CroppedView *croppedView;
 
     cv::Mat scanImage;
+    int scanOrientation;
     std::vector<cv::Mat> croppedImages;
+    std::vector<int> croppedOrientation;
 
     static void displayMatInGraphicsView(const cv::Mat &mat, ImageEditorView *graphicsView, QGraphicsScene *scene);
     static QImage matToQImage(const cv::Mat &mat);
+
+    static cv::Point2f computeCentroid(const std::vector<cv::Point>& quad);
+    static void sortQuadsByCenter(std::vector<std::vector<cv::Point>>& quads, const cv::Point& reference = cv::Point(0, 0));
 };

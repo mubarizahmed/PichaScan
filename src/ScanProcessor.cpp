@@ -1,5 +1,6 @@
 #include "ScanProcessor.h"
 #include <algorithm>
+#include <qDebug>
 
 ScanResult ScanProcessor::detectAndCropPhotos(const cv::Mat &scannedImage) {
     ScanResult result;
@@ -52,16 +53,9 @@ ScanResult ScanProcessor::detectAndCropPhotos(const cv::Mat &scannedImage) {
                 // Bounding box
                 cv::Rect boundingRect = cv::boundingRect(approx);
                 cv::RotatedRect rotRect = cv::minAreaRect(approx);
-                // cv::Rect boundingRect =
 
                 region.boundingBox = boundingRect;
                 region.cropped = scannedImage(boundingRect).clone();
-
-                // cv::polylines(result.annotated, approx, /*isClosed=*/true,
-                //             cv::Scalar(0, 0, 255), /*thickness=*/10);
-
-                // // Draw the bounding rectangle
-                // cv::rectangle(result.annotated, boundingRect, cv::Scalar(255, 0, 0), /*thickness=*/10);
 
                 cv::Point2f vertices[4];
                 rotRect.points(vertices);
@@ -91,17 +85,92 @@ ScanResult ScanProcessor::detectAndCropPhotos(const cv::Mat &scannedImage) {
     return result;
 }
 
-std::vector<cv::Mat> ScanProcessor::cropImages(const cv::Mat &scannedImage, std::vector<std::vector<cv::Point>> quads) {
+std::vector<cv::Mat> ScanProcessor::cropImages(const cv::Mat &scannedImage,
+                                               const std::vector<std::vector<cv::Point>> &quads,
+                                               int scannedRotation,
+                                               const std::vector<int> &rotations) {
     std::vector<cv::Mat> croppedImages;
 
-    for (const auto &quad : quads) {
+    // rotate the image
+    cv::Mat rotatedImage;
+    cv::Mat rotationMatrix = cv::getRotationMatrix2D(cv::Point(scannedImage.cols / 2, scannedImage.rows / 2), -scannedRotation, 1);
+    cv::warpAffine(scannedImage, rotatedImage, rotationMatrix, scannedImage.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(255, 255, 255)); // Fill border with white
 
-        cv::RotatedRect rotRect = cv::minAreaRect(quad);
+    // Add white padding to the image
+    cv::Mat paddedImage;
+    int padding = -findMostNegativeXY(quads) * 10;
+    int borderType = cv::BORDER_CONSTANT;
+    cv::copyMakeBorder(scannedImage, paddedImage, padding, padding, padding, padding,
+                       borderType, cv::Scalar(255, 255, 255));
 
-        cv::Mat cropped = scannedImage(rotRect.boundingRect()).clone();
+    if (quads.size() != rotations.size()) {
+        throw std::invalid_argument("The size of 'quads' and 'rotations' must match.");
+    }
+
+    for (size_t i = 0; i < quads.size(); ++i) {
+        const auto &quad = quads[i];
+        int rotationAngle = (rotations[i] == -1) ? 0 : rotations[i];
+
+        qDebug() << "cropImages: Rotation - " << rotationAngle;
+
+        cv::Mat cropped;
+        // Translate quad points by the padding amount
+        std::vector<cv::Point> translatedQuad;
+        for (const auto &point : quad) {
+            translatedQuad.emplace_back(point.x + padding, point.y + padding);
+        }
+
+        // Find the rotated rectangle from the translated quad
+        cv::RotatedRect rotRect = cv::minAreaRect(translatedQuad);
+
+        cropped = paddedImage(rotRect.boundingRect()).clone();
+
+        // Apply rotation to the cropped region
+        if (!cropped.empty() && rotationAngle != 0) {
+            // Define the center of rotation
+            cv::Point2f center(cropped.cols / 2.0f, cropped.rows / 2.0f);
+
+            // Get the rotation matrix for the given angle
+            cv::Mat rotationMatrix = cv::getRotationMatrix2D(center, -rotationAngle, 1.0);
+
+            // Compute the bounding box size of the rotated image
+            double absCos = std::abs(rotationMatrix.at<double>(0, 0));
+            double absSin = std::abs(rotationMatrix.at<double>(0, 1));
+            int newWidth = static_cast<int>(cropped.rows * absSin + cropped.cols * absCos);
+            int newHeight = static_cast<int>(cropped.rows * absCos + cropped.cols * absSin);
+
+            // Adjust the rotation matrix to account for translation
+            rotationMatrix.at<double>(0, 2) += (newWidth / 2.0 - center.x);
+            rotationMatrix.at<double>(1, 2) += (newHeight / 2.0 - center.y);
+
+            // Create a new matrix to store the rotated image with updated size
+            cv::Mat rotatedCropped;
+            cv::warpAffine(cropped, rotatedCropped, rotationMatrix, cv::Size(newWidth, newHeight),
+                           cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(255, 255, 255)); // Fill border with white
+
+            // Update cropped with the rotated version
+            cropped = rotatedCropped;
+        }
 
         croppedImages.push_back(cropped);
     }
 
     return croppedImages;
+}
+
+double ScanProcessor::findMostNegativeXY(const std::vector<std::vector<cv::Point>> &quads) {
+    double mostNegative = std::numeric_limits<double>::max();
+
+    for (const auto &quad : quads) {
+        for (const auto &point : quad) {
+            mostNegative = std::min({mostNegative, static_cast<double>(point.x), static_cast<double>(point.y)});
+        }
+    }
+
+    qDebug() << "Most negative: " << mostNegative;
+    if (mostNegative > 0) {
+        return -10;
+    }
+
+    return mostNegative;
 }

@@ -49,8 +49,8 @@ void QuadrilateralItem::updatePosition() {
 
 void QuadrilateralItem::deleteQuad() {
     // this->scene()->removeItem(this);
-    // scene()->removeItem(this);
-    delete this;
+    scene()->removeItem(this);
+    emit deletePressed(this);
 }
 
 std::vector<cv::Point> QuadrilateralItem::getCorners() {

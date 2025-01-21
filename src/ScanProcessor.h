@@ -34,7 +34,9 @@ public:
 
     // Returns each cropped photo as an individual Mat
     ScanResult detectAndCropPhotos(const cv::Mat& scannedImage);
-    std::vector<cv::Mat> cropImages(const cv::Mat &scannedImage, std::vector<std::vector<cv::Point>> quads);
+    std::vector<cv::Mat> cropImages(const cv::Mat &scannedImage, const std::vector<std::vector<cv::Point>>& quads, int scannedRotation, const std::vector<int>& rotations);
+
+    static double findMostNegativeXY(const std::vector<std::vector<cv::Point>> &quads);
 };
 
 

@@ -1,5 +1,5 @@
 #include "ImageEditorView.h"
-#include "QuadrilateralItem.h"
+// #include "QuadrilateralItem.h"
 
 #include <QVBoxLayout>
 
@@ -13,7 +13,7 @@ ImageEditorView::ImageEditorView(QWidget *parent = nullptr)
     setDragMode(QGraphicsView::ScrollHandDrag);
     setInteractive(true); // allows item interaction
 
-        // Button overlay layout
+    // Button overlay layout
     auto *layout = new QVBoxLayout(buttonOverlay);
     layout->setSpacing(5);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -33,8 +33,7 @@ ImageEditorView::ImageEditorView(QWidget *parent = nullptr)
     // Connect button signals to slots
     connect(rotateLeftButton, &QPushButton::clicked, this, &ImageEditorView::rotateSceneLeft);
     connect(rotateRightButton, &QPushButton::clicked, this, &ImageEditorView::rotateSceneRight);
-    connect(addQuadrilateralButton, &QPushButton::clicked, this, &ImageEditorView::addQuadrilateral);
-
+    connect(addQuadrilateralButton, &QPushButton::clicked, this, &ImageEditorView::addEmptyQuadrilateral);
 }
 
 void ImageEditorView::wheelEvent(QWheelEvent *event) {
@@ -53,7 +52,6 @@ void ImageEditorView::wheelEvent(QWheelEvent *event) {
 
     event->accept();
 }
-
 
 // void ImageEditorView::mousePressEvent(QMouseEvent *event) {
 //     if (event->button() == Qt::MiddleButton) {
@@ -76,13 +74,15 @@ void ImageEditorView::wheelEvent(QWheelEvent *event) {
 
 void ImageEditorView::rotateSceneLeft() {
     rotate(-90); // Rotate the scene 90 degrees counter-clockwise
+    emit scanRotated(-90);
 }
 
 void ImageEditorView::rotateSceneRight() {
     rotate(90); // Rotate the scene 90 degrees clockwise
+    emit scanRotated(90);
 }
 
-void ImageEditorView::addQuadrilateral() {
+void ImageEditorView::addEmptyQuadrilateral() {
     // find the middle of the scene and half the width and generate 4 points with a 4:3 aspect ratio
     double width = this->scene()->width();
 
@@ -95,10 +95,27 @@ void ImageEditorView::addQuadrilateral() {
         cv::Point(center.x + width / 6, center.y + width / 8),
         cv::Point(center.x - width / 6, center.y + width / 8)};
 
+    auto *quad = new QuadrilateralItem(points, this->scene(), this->scene());
+
+    connect(quad, &QuadrilateralItem::positionChanged, this, &ImageEditorView::updateQuads);
+    connect(quad, &QuadrilateralItem::deletePressed, this, &ImageEditorView::deleteQuad);
+
+    updateQuads();
+}
+
+
+
+void ImageEditorView::addQuadrilateral(std::vector<cv::Point> points) {
 
     auto *quad = new QuadrilateralItem(points, this->scene(), this->scene());
 
     connect(quad, &QuadrilateralItem::positionChanged, this, &ImageEditorView::updateQuads);
+    connect(quad, &QuadrilateralItem::deletePressed, this, &ImageEditorView::deleteQuad);
+}
+
+void ImageEditorView::deleteQuad(QuadrilateralItem *q) {
+    delete q;
+    updateQuads();
 }
 
 void ImageEditorView::resizeEvent(QResizeEvent *event) {

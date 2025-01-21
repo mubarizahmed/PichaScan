@@ -7,6 +7,7 @@
 #include <QWheelEvent>
 #include <QWidget> // for QWidget if needed
 #include <opencv2/core.hpp>
+#include "QuadrilateralItem.h"
 
 class ImageEditorView : public QGraphicsView {
     Q_OBJECT
@@ -14,7 +15,9 @@ class ImageEditorView : public QGraphicsView {
 public:
     explicit ImageEditorView(QWidget *parent);
     void positionButtons();
-
+    void addQuadrilateral(std::vector<cv::Point> points);
+    void addEmptyQuadrilateral();
+    void deleteQuad(QuadrilateralItem *q);
     void updateQuads();
 
 protected:
@@ -25,11 +28,11 @@ protected:
 
 signals:
     void quadrilateralsChanged(std::vector<std::vector<cv::Point>> quads);
+    void scanRotated(int angle);
 
 private slots:
     void rotateSceneLeft();
     void rotateSceneRight();
-    void addQuadrilateral();
 
 private:
     QWidget *buttonOverlay;

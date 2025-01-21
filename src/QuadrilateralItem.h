@@ -23,6 +23,7 @@ public:
 
 signals:
     void positionChanged();
+    void deletePressed(QuadrilateralItem *quad);
 
 private:
     std::vector<CornerItem *> corners;

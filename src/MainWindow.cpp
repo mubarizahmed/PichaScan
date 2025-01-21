@@ -17,6 +17,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
 
     scanner = nullptr;
+    scanOrientation = 0;
 
     ui->setupUi(this);
 
@@ -53,6 +54,24 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->comboScanners, SIGNAL(currentTextChanged(QString)), this, SLOT(onScannerSelectionChanged(QString)));
 
     connect(scanView, &ImageEditorView::quadrilateralsChanged, this, &MainWindow::updateThumbnailsList);
+    connect(scanView, &ImageEditorView::scanRotated, [this](int angle) {
+        int oldScanOrientation = scanOrientation;
+        scanOrientation += angle;
+        scanOrientation = (scanOrientation + 360) % 360;
+
+        // Rotate the croppedImages
+        if (std::all_of(croppedOrientation.begin(), croppedOrientation.end(),
+                        [oldScanOrientation](int val) {
+                            return val == -1 || val == oldScanOrientation;
+                        })) {
+            // Adjust elements if all are -1 or match the required condition
+            for (auto &cropped : croppedOrientation) {
+                cropped = scanOrientation;
+            }
+        }
+
+        scanView->updateQuads();
+    });
 
     onFindScannerButtonClicked();
 
@@ -105,9 +124,8 @@ void MainWindow::onScanButtonClicked() {
     // Add rectangles to the scanScene
     std::vector<std::vector<cv::Point>> quads;
     for (const auto &region : scanResult.regions) {
-        auto *quad = new QuadrilateralItem(region.corners, scanScene, scanScene);
+        scanView->addQuadrilateral(region.corners);
         quads.push_back(region.corners);
-        connect(quad, &QuadrilateralItem::positionChanged, scanView, &ImageEditorView::updateQuads);
     }
 
     // Update the list of thumbnails
@@ -155,13 +173,36 @@ void MainWindow::onScannerSelectionChanged(QString scannerName) {
 }
 
 void MainWindow::updateThumbnailsList(std::vector<std::vector<cv::Point>> quads) {
+    // sort quads by the vector to their center
+
+    sortQuadsByCenter(quads);
+
+    if (croppedOrientation.size() != quads.size()) {
+        // Check if all elements in croppedOrientation are the same
+        int initializeValue = -1;
+        if (!croppedOrientation.empty() &&
+            std::all_of(croppedOrientation.begin(), croppedOrientation.end(),
+                        [this](int val) { return val == croppedOrientation.front(); })) {
+            initializeValue = croppedOrientation.front();
+        }
+
+        // Adjust size of croppedOrientation to match quads size
+        while (croppedOrientation.size() < quads.size()) {
+            croppedOrientation.push_back(initializeValue);
+        }
+
+        while (croppedOrientation.size() > quads.size()) {
+            croppedOrientation.pop_back();
+        }
+    }
+
     qDebug() << "Updating thumbnails list with " << quads.size() << " quadrilaterals.";
     // Clear the existing listview
     croppedView->model()->removeRows(0, croppedView->model()->rowCount());
 
     // Use the ScanProcessor to crop the images
     ScanProcessor processor;
-    croppedImages = processor.cropImages(scanImage, quads);
+    croppedImages = processor.cropImages(scanImage, quads, scanOrientation, croppedOrientation);
 
     // Display the cropped images in the list
     for (const auto &cropped : croppedImages) {
@@ -237,4 +278,28 @@ QImage MainWindow::matToQImage(const cv::Mat &mat) {
         qDebug() << "Unsupported matrix type for QImage conversion: " << mat.type();
         throw std::runtime_error("Unsupported cv::Mat type for QImage conversion.");
     }
+}
+
+cv::Point2f MainWindow::computeCentroid(const std::vector<cv::Point> &quad) {
+    cv::Point2f centroid(0, 0);
+    for (const auto &point : quad) {
+        centroid.x += point.x;
+        centroid.y += point.y;
+    }
+    centroid.x /= quad.size();
+    centroid.y /= quad.size();
+    return centroid;
+}
+
+// Main function to sort quads
+void MainWindow::sortQuadsByCenter(std::vector<std::vector<cv::Point>> &quads, const cv::Point &reference) {
+    sort(quads.begin(), quads.end(), [&reference](const std::vector<cv::Point> &a, const std::vector<cv::Point> &b) {
+        cv::Point2f centroidA = computeCentroid(a);
+        cv::Point2f centroidB = computeCentroid(b);
+
+        float distanceA = sqrt(pow(centroidA.x - reference.x, 2) + pow(centroidA.y - reference.y, 2));
+        float distanceB = sqrt(pow(centroidB.x - reference.x, 2) + pow(centroidB.y - reference.y, 2));
+
+        return distanceA < distanceB; // Sort in ascending order
+    });
 }
