@@ -40,15 +40,20 @@ ImageEditorView::ImageEditorView(QWidget *parent = nullptr)
 void ImageEditorView::wheelEvent(QWheelEvent *event) {
     // Zoom factor
     constexpr double scaleFactor = 1.15;
-    if (event->angleDelta().y() > 0) {
-        // zoom in
-        scale(scaleFactor, scaleFactor);
-    } else {
-        // zoom out
-        scale(1.0 / scaleFactor, 1.0 / scaleFactor);
-    }
+
+    // Get the position of the mouse in scene coordinates
+    QPointF scenePosBefore = mapToScene(event->position().toPoint());
+    setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
+    qDebug() << "ScenePosBefore:" << scenePosBefore;
+    // Determine the zoom direction
+    double factor = (event->angleDelta().y() > 0) ? scaleFactor : (1.0 / scaleFactor);
+
+    // Scale the scene (via the view's transformation matrix)
+    scale(factor, factor);
+
     event->accept();
 }
+
 
 // void ImageEditorView::mousePressEvent(QMouseEvent *event) {
 //     if (event->button() == Qt::MiddleButton) {

@@ -56,9 +56,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     onFindScannerButtonClicked();
 
-    scanView->positionButtons();
-    scanView->updateGeometry();
-
     croppedView = new CroppedView(this);
     // croppedView->setGeometry(ui->listThumbnails->geometry());
     croppedView->setObjectName(ui->listThumbnails->objectName());
@@ -73,6 +70,9 @@ MainWindow::MainWindow(QWidget *parent)
     // Delete the old QListView instance
     delete ui->listThumbnails;
     ui->listThumbnails = croppedView;
+
+    show();
+    scanView->positionButtons();
 }
 
 MainWindow::~MainWindow() {

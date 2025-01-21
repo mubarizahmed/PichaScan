@@ -11,7 +11,7 @@ class MainWindow;
 QT_END_NAMESPACE
 
 class ImageEditorView; // Forward declaration
-class CroppedView; // Forward declaration
+class CroppedView;     // Forward declaration
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -19,6 +19,7 @@ class MainWindow : public QMainWindow {
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    ImageEditorView *scanView;
 
 private slots:
 
@@ -32,14 +33,11 @@ private:
 
     std::unique_ptr<ScannerInterface> scanner;
 
-    ImageEditorView *scanView;
     QGraphicsScene *scanScene;
-    CroppedView* croppedView;
+    CroppedView *croppedView;
 
     cv::Mat scanImage;
     std::vector<cv::Mat> croppedImages;
-
-
 
     static void displayMatInGraphicsView(const cv::Mat &mat, ImageEditorView *graphicsView, QGraphicsScene *scene);
     static QImage matToQImage(const cv::Mat &mat);
