@@ -38,8 +38,11 @@ class CroppedView : public QListWidget {
 
 public:
     explicit CroppedView(QWidget *parent = nullptr);
-    void addImageItem(const QPixmap &pixmap);
+    void addImageItem(const QPixmap &pixmap, int index);
     void manualResize();
+
+signals:
+    void viewItemRotated(int index, int angle);
 
 protected:
     void resizeEvent(QResizeEvent *event) override;

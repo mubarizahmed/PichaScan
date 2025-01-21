@@ -86,6 +86,19 @@ MainWindow::MainWindow(QWidget *parent)
         croppedParentLayout->replaceWidget(ui->listThumbnails, croppedView);
     }
 
+    connect(croppedView, &CroppedView::viewItemRotated, [this](int index, int angle) {
+        int oldOrientation = croppedOrientation[index];
+        croppedOrientation[index] += angle;
+        croppedOrientation[index] = (croppedOrientation[index] + 360) % 360;
+
+        // Rotate the cropped image
+        if (oldOrientation == -1) {
+            croppedOrientation[index] = angle;
+        }
+
+        scanView->updateQuads();
+    });
+
     // Delete the old QListView instance
     delete ui->listThumbnails;
     ui->listThumbnails = croppedView;
@@ -205,7 +218,8 @@ void MainWindow::updateThumbnailsList(std::vector<std::vector<cv::Point>> quads)
     croppedImages = processor.cropImages(scanImage, quads, scanOrientation, croppedOrientation);
 
     // Display the cropped images in the list
-    for (const auto &cropped : croppedImages) {
+    for (size_t index = 0; index < croppedImages.size(); ++index) {
+        const auto &cropped = croppedImages[index];
 
         // Convert cv::Mat to QImage
         QImage qImage = matToQImage(cropped);
@@ -213,7 +227,8 @@ void MainWindow::updateThumbnailsList(std::vector<std::vector<cv::Point>> quads)
         // Convert QImage to QPixmap
         QPixmap pixmap = QPixmap::fromImage(qImage);
 
-        croppedView->addImageItem(pixmap);
+        // Pass index to addImageItem if needed
+        croppedView->addImageItem(pixmap, index);
     }
     croppedView->manualResize();
 }

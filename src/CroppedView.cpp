@@ -98,11 +98,19 @@ CroppedView::CroppedView(QWidget *parent)
     setSpacing(5);
 }
 
-void CroppedView::addImageItem(const QPixmap &pixmap) {
+void CroppedView::addImageItem(const QPixmap &pixmap, int index) {
     QListWidgetItem *item = new QListWidgetItem();
     item->setSizeHint(QSize(itemWidth, itemHeight));
 
     CroppedViewItem *viewItem = new CroppedViewItem(pixmap, this);
+    connect(viewItem, &CroppedViewItem::rotateLeft, [this, index]() {
+        qDebug() << "Rotate Left:" << index;
+        emit viewItemRotated(index, -90);
+    });
+    connect(viewItem, &CroppedViewItem::rotateRight, [this, index]() {
+        qDebug() << "Rotate Right:" << index;
+        emit viewItemRotated(index, 90);
+    });
     addItem(item);
     setItemWidget(item, viewItem);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
