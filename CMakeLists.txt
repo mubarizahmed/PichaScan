@@ -12,8 +12,16 @@ find_package(Qt6 6.5 COMPONENTS Widgets REQUIRED)
 set(OpenCV_DIR "C:/opencv-mingw-64/x64/mingw/lib")
 find_package(OpenCV REQUIRED)
 
-# (Optional) Find exiv2 for metadata
-# find_package(Exiv2 REQUIRED)
+# Find Exiv2
+set(EXIV2_DIR "C:/libs/exiv2-0.27.5-MinGW64/lib/cmake/exiv2")
+find_package(EXIV2 REQUIRED)
+if(EXIV2_FOUND)
+    message(STATUS "Exiv2 found: ${EXIV2_INCLUDE_DIRS}")
+else()
+    message(FATAL_ERROR "Exiv2 not found")
+endif()
+
+include_directories("C:/libs/exiv2-0.27.5-MinGW64/include")
 
 # If you have a .ui file, be sure to enable Qt’s AUTOUIC
 set(CMAKE_AUTOUIC ON)
@@ -55,7 +63,7 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Qt6::Widgets
         ${OpenCV_LIBS}
-        # exiv2 if you include it
+        ${EXIV2_LIBS}
         # ${SANE_LIB} if you find it
 )
 

@@ -131,11 +131,15 @@ void ImageEditorView::positionButtons() {
 void ImageEditorView::updateQuads() {
     // Update all quadrilaterals
     std::vector<std::vector<cv::Point>> quads;
+    getQuads(quads);
+
+    emit quadrilateralsChanged(quads);
+}
+
+void ImageEditorView::getQuads(std::vector<std::vector<cv::Point>> &quads) {
     for (auto item : scene()->items()) {
         if (auto *quad = qgraphicsitem_cast<QuadrilateralItem *>(item)) {
             quads.push_back(quad->getCorners());
         }
     }
-
-    emit quadrilateralsChanged(quads);
 }

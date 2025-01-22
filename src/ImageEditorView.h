@@ -19,6 +19,7 @@ public:
     void addEmptyQuadrilateral();
     void deleteQuad(QuadrilateralItem *q);
     void updateQuads();
+    void getQuads(std::vector<std::vector<cv::Point>> &quads);
 
 protected:
     void wheelEvent(QWheelEvent *event) override;

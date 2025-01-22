@@ -12,6 +12,8 @@
 #include <QGraphicsRectItem>
 #include <QListWidget>
 #include <QMessageBox>
+#include <exiv2/exiv2.hpp>
+#include "ImageSaver.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -48,6 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Suppose you have a QPushButton named scanButton in your .ui
     connect(ui->btnScan, &QPushButton::clicked,
             this, &MainWindow::onScanButtonClicked);
+    connect(ui->btnSave, &QPushButton::clicked, this, &MainWindow::onSaveButtonClicked);
 
     connect(ui->btnFindScanners, &QPushButton::clicked, this, &MainWindow::onFindScannerButtonClicked);
 
@@ -143,6 +146,33 @@ void MainWindow::onScanButtonClicked() {
 
     // Update the list of thumbnails
     updateThumbnailsList(quads);
+}
+
+void MainWindow::onSaveButtonClicked() {
+    std::vector<std::vector<cv::Point>> quads;
+    scanView->getQuads(quads);
+
+    ScanProcessor processor;
+    std::vector<cv::Mat> croppedImages = processor.cropImages(scanImage, quads, scanOrientation, croppedOrientation);
+
+    // create file_path
+    QString file_path = QDir::homePath() + "/Pictures/PichaScan/";
+    QString project_name = "Test";
+
+    // create directory
+    QDir dir(file_path + project_name);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+
+    // save images
+    ImageSaver imageSaver;
+    for (size_t i = 0; i < croppedImages.size(); ++i) {
+        QString file_name = project_name + "_" + QString::number(i) + ".jpg";
+        QString file_path_name = file_path + project_name + "/" + file_name;
+        imageSaver.saveImage(croppedImages[i], file_path_name);
+    }
+
 }
 
 void MainWindow::onFindScannerButtonClicked() {
