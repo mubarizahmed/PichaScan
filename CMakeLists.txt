@@ -63,8 +63,10 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Qt6::Widgets
         ${OpenCV_LIBS}
-        ${EXIV2_LIBS}
+        # ${EXIV2_LIBS}
         # ${SANE_LIB} if you find it
+        C:/libs/exiv2-0.27.5-MinGW64/lib/libexiv2.dll.a
+        ${EXIV2_LIBS}
 )
 
 # For Windows, you may need extra linking for WIA or TWAIN
@@ -74,13 +76,47 @@ target_link_libraries(${PROJECT_NAME}
 #   target_link_libraries(${PROJECT_NAME} PRIVATE twain_32)
 # endif()
 
+# if(WIN32)
+#     # This custom command will run after PichaScan is built
+#     add_custom_command(TARGET PichaScan
+#         POST_BUILD
+#         COMMAND "${Qt6_DIR}/../../../bin/windeployqt.exe"
+#                 --dir "$<TARGET_FILE_DIR:PichaScan>"
+#                 "$<TARGET_FILE:PichaScan>"
+#         COMMENT "Running windeployqt to deploy Qt libs..."
+#     )
+# endif()
+
+
 if(WIN32)
-    # This custom command will run after PichaScan is built
+    # Paths to the required DLLs
+    set(EXIV2_DLL "C:/libs/exiv2-0.27.5-MinGW64/bin/libexiv2.dll")
+    set(ZLIB_DLL "C:/msys64/ucrt64/bin/zlib1.dll")
+    set(EXPAT_DLL "C:/msys64/ucrt64/bin/libexpat-1.dll")
+    set(ICONV_DLL "C:/msys64/ucrt64/bin/libiconv-2.dll")
+    set(INTL_DLL "C:/msys64/ucrt64/bin/libintl-8.dll")
+
+    # Custom command to deploy Qt libraries and other dependencies
     add_custom_command(TARGET PichaScan
         POST_BUILD
         COMMAND "${Qt6_DIR}/../../../bin/windeployqt.exe"
                 --dir "$<TARGET_FILE_DIR:PichaScan>"
                 "$<TARGET_FILE:PichaScan>"
-        COMMENT "Running windeployqt to deploy Qt libs..."
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${EXIV2_DLL}"
+                "$<TARGET_FILE_DIR:PichaScan>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${ZLIB_DLL}"
+                "$<TARGET_FILE_DIR:PichaScan>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${EXPAT_DLL}"
+                "$<TARGET_FILE_DIR:PichaScan>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${ICONV_DLL}"
+                "$<TARGET_FILE_DIR:PichaScan>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${INTL_DLL}"
+                "$<TARGET_FILE_DIR:PichaScan>"
+        COMMENT "Deploying Qt libs and copying Exiv2 and other dependency DLLs..."
     )
 endif()

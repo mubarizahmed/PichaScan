@@ -12,7 +12,6 @@
 #include <QGraphicsRectItem>
 #include <QListWidget>
 #include <QMessageBox>
-#include <exiv2/exiv2.hpp>
 #include "ImageSaver.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -74,6 +73,10 @@ MainWindow::MainWindow(QWidget *parent)
         }
 
         scanView->updateQuads();
+    });
+
+    connect(ui->dateTimeEdit, &QDateTimeEdit::dateTimeChanged, [this](const QDateTime &dateTime) {
+        imageDateTime = dateTime;
     });
 
     onFindScannerButtonClicked();
@@ -170,7 +173,14 @@ void MainWindow::onSaveButtonClicked() {
     for (size_t i = 0; i < croppedImages.size(); ++i) {
         QString file_name = project_name + "_" + QString::number(i) + ".jpg";
         QString file_path_name = file_path + project_name + "/" + file_name;
-        imageSaver.saveImage(croppedImages[i], file_path_name);
+
+        QString dateTimeString = imageDateTime.toString("yyyy:MM:dd HH:mm:ss");
+
+        // add 10 seconds
+        imageDateTime = imageDateTime.addSecs(60);
+        ui->dateTimeEdit->setDateTime(imageDateTime);
+
+        imageSaver.saveImage(croppedImages[i], file_path_name, dateTimeString);
     }
 
 }

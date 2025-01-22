@@ -42,6 +42,8 @@ private:
     std::vector<cv::Mat> croppedImages;
     std::vector<int> croppedOrientation;
 
+    QDateTime imageDateTime;
+
     static void displayMatInGraphicsView(const cv::Mat &mat, ImageEditorView *graphicsView, QGraphicsScene *scene);
     static QImage matToQImage(const cv::Mat &mat);
 
