@@ -19,7 +19,12 @@ class MainWindow : public QMainWindow {
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    
+public slots:
+    void handleMapMarker(double latitude, double longitude);
 
+signals:
+    void setInitialCoordinates(double latitude, double longitude);
 
 private slots:
 
@@ -45,6 +50,7 @@ private:
     std::vector<int> croppedOrientation;
 
     QDateTime imageDateTime;
+    std::pair<double, double> imageLocation;
 
     static void displayMatInGraphicsView(const cv::Mat &mat, ImageEditorView *graphicsView, QGraphicsScene *scene);
     static QImage matToQImage(const cv::Mat &mat);

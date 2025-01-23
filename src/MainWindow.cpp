@@ -13,12 +13,21 @@
 #include <QGraphicsRectItem>
 #include <QListWidget>
 #include <QMessageBox>
+#include <QtQml>
+
+#include "C:\Qt\6.8.1\mingw_64\include\QtQml\qqmlcontext.h"
+#include "C:\Qt\6.8.1\mingw_64\include\QtQml\qqmlengine.h"
+#include "C:\Qt\6.8.1\mingw_64\include\QtQuickWidgets\qquickwidget.h"
+#include <QtLocation>
+#include <QtQuickWidgets>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
 
     scanner = nullptr;
     scanOrientation = 0;
+
+    imageLocation = {-0.2895344951889875, 36.08193634429046};
 
     ui->setupUi(this);
 
@@ -112,12 +121,68 @@ MainWindow::MainWindow(QWidget *parent)
     delete ui->listThumbnails;
     ui->listThumbnails = croppedView;
 
+    // Create a QQuickWidget for the map
+    QQuickWidget *mapWidget = new QQuickWidget(this);
+
+    // Set the QML source for the QQuickWidget
+    mapWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    mapWidget->engine()->rootContext()->setContextProperty("parentWidget", this);
+
+    // Load QML map programmatically
+    mapWidget->setSource(QUrl(QStringLiteral("qrc:/map.qml")));
+
+    // Add the QQuickWidget to the layout or a specific widget in your UI
+    mapWidget->setGeometry(ui->mapPlaceholder->geometry());
+    mapWidget->setObjectName(ui->mapPlaceholder->objectName());
+    mapWidget->setSizePolicy(ui->mapPlaceholder->sizePolicy());
+
+    QLayout *mapParentLayout = ui->mapPlaceholder->parentWidget()->layout();
+    if (mapParentLayout) {
+        mapParentLayout->replaceWidget(ui->mapPlaceholder, mapWidget);
+    }
+    delete ui->mapPlaceholder;
+    ui->mapPlaceholder = mapWidget;
+
+    // Access the QML root object
+    QObject *rootObject = mapWidget->rootObject();
+
+    // loop through the children of root and qDebug their types
+    for (auto *child : rootObject->children()) {
+        qDebug() << child->objectName();
+    }
+
+    // Find the Map object inside the Rectangle
+    QObject *mapObject = rootObject->findChild<QObject *>("pichascanmap");
+    if (mapObject) {
+        // Connect the signal from the Map object
+        connect(mapObject, SIGNAL(mapMarkerSignal(double, double)),
+                this, SLOT(handleMapMarker(double, double)));
+    } else {
+        qDebug() << "Map object not found in QML hierarchy!";
+    }
+
+    QObject::connect(this, &MainWindow::setInitialCoordinates,
+                     rootObject, [rootObject](double latitude, double longitude) {
+                         QMetaObject::invokeMethod(rootObject, "setMarkerCoordinates",
+                                                   Q_ARG(QVariant, latitude), Q_ARG(QVariant, longitude));
+                     });
+
+    // Send initial coordinates to center the map and add a marker
+    emit setInitialCoordinates(imageLocation.first, imageLocation.second); // Nakuru
+
     show();
     scanView->positionButtons();
 }
 
 MainWindow::~MainWindow() {
     delete ui;
+}
+
+void MainWindow::handleMapMarker(double latitude, double longitude) {
+    qDebug() << "Marker added at:" << latitude << "," << longitude;
+    // Handle marker coordinates in your application
+
+    imageLocation = {latitude, longitude};
 }
 
 void MainWindow::onScanButtonClicked() {
@@ -183,7 +248,7 @@ void MainWindow::onSaveButtonClicked() {
         imageDateTime = imageDateTime.addSecs(60);
         ui->dateTimeEdit->setDateTime(imageDateTime);
 
-        imageSaver.saveImage(croppedImages[i], file_path_name, dateTimeString);
+        imageSaver.saveImage(croppedImages[i], file_path_name, dateTimeString, imageLocation);
     }
 }
 
