@@ -2,16 +2,19 @@
 
 #include "WiaScanner.h"
 
-#include <wia.h>
+#include <comdef.h>
 #include <iostream>
+#include <opencv2/opencv.hpp>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <stdexcept>
-#include <opencv2/opencv.hpp>
+#include <wia.h>
+#include <wiadef.h>
+
+#define WIA_DPS_HORIZONTAL_RESOLUTION 0x6147
+#define WIA_DPS_VERTICAL_RESOLUTION 0x6148
 
 #define MIN_PROPID 2
-
-
 
 WiaScanner::WiaScanner() {
     if (FAILED(initialize())) {
@@ -32,7 +35,7 @@ HRESULT WiaScanner::initialize() {
     }
 
     std::cout << "initialize: Creating WIA Device Manager instance..." << std::endl;
-    hr = CoCreateInstance(CLSID_WiaDevMgr, nullptr, CLSCTX_LOCAL_SERVER, IID_IWiaDevMgr, (void**)&wiaDevMgr);
+    hr = CoCreateInstance(CLSID_WiaDevMgr, nullptr, CLSCTX_LOCAL_SERVER, IID_IWiaDevMgr, (void **)&wiaDevMgr);
 
     if (FAILED(hr)) {
         std::cerr << "initialize: CoCreateInstance failed with HRESULT: " << std::hex << hr << std::endl;
@@ -43,7 +46,7 @@ HRESULT WiaScanner::initialize() {
     std::cout << "initialize: Populating available scanners..." << std::endl;
     try {
         populateAvailableScanners();
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         std::cerr << "initialize: Exception during populateAvailableScanners - " << e.what() << std::endl;
         cleanup();
         return E_FAIL;
@@ -83,12 +86,12 @@ void WiaScanner::cleanup() {
     std::cout << "cleanup: Completed cleanup." << std::endl;
 }
 
-
 void WiaScanner::populateAvailableScanners() {
-    if (!wiaDevMgr) throw std::runtime_error("WIA Device Manager not initialized");
+    if (!wiaDevMgr)
+        throw std::runtime_error("WIA Device Manager not initialized");
 
     availableScanners.clear(); // Clear existing entries
-    IEnumWIA_DEV_INFO* pEnum = nullptr;
+    IEnumWIA_DEV_INFO *pEnum = nullptr;
     HRESULT hr = wiaDevMgr->EnumDeviceInfo(WIA_DEVINFO_ENUM_LOCAL, &pEnum);
 
     if (FAILED(hr)) {
@@ -96,7 +99,7 @@ void WiaScanner::populateAvailableScanners() {
         throw std::runtime_error("Failed to enumerate WIA devices");
     }
 
-    IWiaPropertyStorage* pStorage = nullptr;
+    IWiaPropertyStorage *pStorage = nullptr;
     while (S_OK == pEnum->Next(1, &pStorage, nullptr)) {
         PROPSPEC propSpec[1] = {};
         PROPVARIANT propVar[1] = {};
@@ -125,20 +128,26 @@ std::vector<std::wstring> WiaScanner::getAvailableScanners() const {
     return availableScanners;
 };
 
-void WiaScanner::setPreferredScanner(const std::wstring& scannerName) {
-    if (!wiaDevMgr) throw std::runtime_error("WIA Device Manager not initialized");
+void WiaScanner::setPreferredScanner(const std::wstring &scannerName) {
+    if (!wiaDevMgr)
+        throw std::runtime_error("WIA Device Manager not initialized");
 
-    IWiaItem* device = findDeviceByName(scannerName);
-    if (!device) throw std::runtime_error("Scanner not found");
+    IWiaItem *device = findDeviceByName(scannerName);
+    if (!device)
+        throw std::runtime_error("Scanner not found");
 
-    if (selectedDevice) selectedDevice->Release();
+    if (selectedDevice)
+        selectedDevice->Release();
     selectedDevice = device;
+
+    getDpiConstraints();
+    getColorOptions();
 }
 
-IWiaItem* WiaScanner::findDeviceByName(const std::wstring& name) {
+IWiaItem *WiaScanner::findDeviceByName(const std::wstring &name) {
     std::wcout << L"findDeviceByName: Searching for device with name: " << name << std::endl;
 
-    IEnumWIA_DEV_INFO* pEnum = nullptr;
+    IEnumWIA_DEV_INFO *pEnum = nullptr;
     HRESULT hr = wiaDevMgr->EnumDeviceInfo(WIA_DEVINFO_ENUM_LOCAL, &pEnum);
 
     if (FAILED(hr)) {
@@ -146,7 +155,7 @@ IWiaItem* WiaScanner::findDeviceByName(const std::wstring& name) {
         return nullptr;
     }
 
-    IWiaPropertyStorage* pStorage = nullptr;
+    IWiaPropertyStorage *pStorage = nullptr;
     while (S_OK == pEnum->Next(1, &pStorage, nullptr)) {
         PROPSPEC propSpecName = {PRSPEC_PROPID, WIA_DIP_DEV_NAME};
         PROPVARIANT propVarName = {};
@@ -157,7 +166,7 @@ IWiaItem* WiaScanner::findDeviceByName(const std::wstring& name) {
 
             if (_wcsicmp(name.c_str(), propVarName.bstrVal) == 0) {
                 std::wcout << L"findDeviceByName: Match found for device - " << propVarName.bstrVal << std::endl;
-                IWiaItem* device = nullptr;
+                IWiaItem *device = nullptr;
                 PROPSPEC propSpecId = {PRSPEC_PROPID, WIA_DIP_DEV_ID};
                 PROPVARIANT propVarId = {};
 
@@ -169,6 +178,10 @@ IWiaItem* WiaScanner::findDeviceByName(const std::wstring& name) {
                 PropVariantClear(&propVarName);
                 pStorage->Release();
                 pEnum->Release();
+
+                if (SUCCEEDED(hr)) {
+                    // printDeviceProperties(device); // Call the new function here
+                }
                 return SUCCEEDED(hr) ? device : nullptr;
             }
             PropVariantClear(&propVarName);
@@ -181,9 +194,8 @@ IWiaItem* WiaScanner::findDeviceByName(const std::wstring& name) {
     return nullptr;
 }
 
-
 // Utility function to convert a PROPVARIANT to std::wstring
-std::wstring PropVariantToString(const PROPVARIANT& propVar) {
+std::wstring PropVariantToString(const PROPVARIANT &propVar) {
     if (propVar.vt == VT_BSTR) {
         return propVar.bstrVal;
     } else if (propVar.vt == VT_I4) {
@@ -193,7 +205,7 @@ std::wstring PropVariantToString(const PROPVARIANT& propVar) {
 }
 
 // Utility function to create a PROPVARIANT from a std::wstring
-PROPVARIANT StringToPropVariant(const std::wstring& value) {
+PROPVARIANT StringToPropVariant(const std::wstring &value) {
     PROPVARIANT propVar;
     PropVariantInit(&propVar);
     propVar.vt = VT_BSTR;
@@ -202,20 +214,22 @@ PROPVARIANT StringToPropVariant(const std::wstring& value) {
 }
 
 // Function to free a PROPVARIANT
-void FreePropVariant(PROPVARIANT& propVar) {
+void FreePropVariant(PROPVARIANT &propVar) {
     PropVariantClear(&propVar);
 }
 
 // Implementation of property getter and setter
 std::map<std::wstring, std::wstring> WiaScanner::getAllScannerProperties() {
-    if (!selectedDevice) throw std::runtime_error("No scanner selected");
+    if (!selectedDevice)
+        throw std::runtime_error("No scanner selected");
 
     std::map<std::wstring, std::wstring> properties;
-    IWiaPropertyStorage* pStorage = nullptr;
-    HRESULT hr = selectedDevice->QueryInterface(IID_IWiaPropertyStorage, (void**)&pStorage);
-    if (FAILED(hr)) throw std::runtime_error("Failed to query property storage");
+    IWiaPropertyStorage *pStorage = nullptr;
+    HRESULT hr = selectedDevice->QueryInterface(IID_IWiaPropertyStorage, (void **)&pStorage);
+    if (FAILED(hr))
+        throw std::runtime_error("Failed to query property storage");
 
-    IEnumSTATPROPSTG* pEnum = nullptr;
+    IEnumSTATPROPSTG *pEnum = nullptr;
     hr = pStorage->Enum(&pEnum);
     if (FAILED(hr)) {
         pStorage->Release();
@@ -246,14 +260,16 @@ std::map<std::wstring, std::wstring> WiaScanner::getAllScannerProperties() {
     return properties;
 }
 
-void WiaScanner::setScannerProperty(const std::wstring& propertyName, const std::wstring& value) {
-    if (!selectedDevice) throw std::runtime_error("No scanner selected");
+void WiaScanner::setScannerProperty(const std::wstring &propertyName, const std::wstring &value) {
+    if (!selectedDevice)
+        throw std::runtime_error("No scanner selected");
 
-    IWiaPropertyStorage* pStorage = nullptr;
-    HRESULT hr = selectedDevice->QueryInterface(IID_IWiaPropertyStorage, (void**)&pStorage);
-    if (FAILED(hr)) throw std::runtime_error("Failed to query property storage");
+    IWiaPropertyStorage *pStorage = nullptr;
+    HRESULT hr = selectedDevice->QueryInterface(IID_IWiaPropertyStorage, (void **)&pStorage);
+    if (FAILED(hr))
+        throw std::runtime_error("Failed to query property storage");
 
-    IEnumSTATPROPSTG* pEnum = nullptr;
+    IEnumSTATPROPSTG *pEnum = nullptr;
     hr = pStorage->Enum(&pEnum);
     if (FAILED(hr)) {
         pStorage->Release();
@@ -305,9 +321,9 @@ public:
         }
         return m_refCount;
     }
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override {
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObject) override {
         if (riid == IID_IUnknown || riid == IID_IWiaDataCallback) {
-            *ppvObject = static_cast<IWiaDataCallback*>(this);
+            *ppvObject = static_cast<IWiaDataCallback *>(this);
             AddRef();
             return S_OK;
         }
@@ -322,8 +338,7 @@ public:
         LONG lLength,
         LONG lReserved,
         LONG lResLength,
-        BYTE* pbBuffer
-    ) override {
+        BYTE *pbBuffer) override {
         // For now, just ignore the callback. Implement if needed.
         return S_OK;
     }
@@ -345,13 +360,13 @@ cv::Mat WiaScanner::scanImage() {
     //     throw std::runtime_error("Failed to access scanner item");
     // }
 
-    IEnumWiaItem* enumWiaItem = nullptr;
+    IEnumWiaItem *enumWiaItem = nullptr;
     HRESULT hr = selectedDevice->EnumChildItems(&enumWiaItem);
     if (FAILED(hr) || !enumWiaItem) {
         throw std::runtime_error("Failed to enumerate child items of the selected device.");
     }
 
-    IWiaItem* scannerItem = nullptr;
+    IWiaItem *scannerItem = nullptr;
     ULONG fetched = 0;
     hr = enumWiaItem->Next(1, &scannerItem, &fetched);
     enumWiaItem->Release(); // Release the enumerator after retrieving the item
@@ -360,8 +375,8 @@ cv::Mat WiaScanner::scanImage() {
         throw std::runtime_error("No scanner item found in the selected device.");
     }
 
-    IWiaDataTransfer* dataTransfer = nullptr;
-    hr = scannerItem->QueryInterface(IID_IWiaDataTransfer, (void**)&dataTransfer);
+    IWiaDataTransfer *dataTransfer = nullptr;
+    hr = scannerItem->QueryInterface(IID_IWiaDataTransfer, (void **)&dataTransfer);
     scannerItem->Release();
 
     if (FAILED(hr)) {
@@ -377,7 +392,7 @@ cv::Mat WiaScanner::scanImage() {
     stgMedium.lpszFileName = tempFilePath;
 
     // Create a minimal data callback
-    WiaDataCallback* callback = new WiaDataCallback();
+    WiaDataCallback *callback = new WiaDataCallback();
 
     // Perform data transfer
     hr = dataTransfer->idtGetData(&stgMedium, callback);
@@ -391,7 +406,6 @@ cv::Mat WiaScanner::scanImage() {
     std::wstring widePath = tempFilePath;
     std::string narrowPath(widePath.begin(), widePath.end());
 
-
     // Load the scanned file into OpenCV
     cv::Mat image = cv::imread(narrowPath, cv::IMREAD_COLOR);
     if (image.empty()) {
@@ -404,88 +418,249 @@ cv::Mat WiaScanner::scanImage() {
     return image;
 }
 
-// cv::Mat WiaScanner::scanImage() {
-//     if (!selectedDevice) {
-//         throw std::runtime_error("No scanner selected");
-//     }
+void WiaScanner::printDeviceProperties(IWiaItem *device) {
+    if (!device) {
+        std::cerr << "printDeviceProperties: Device is null." << std::endl;
+        return;
+    }
 
-//     // Step 1: Enumerate child items
-//     IEnumWiaItem* enumWiaItem = nullptr;
-//     HRESULT hr = selectedDevice->EnumChildItems(&enumWiaItem);
-//     if (FAILED(hr) || !enumWiaItem) {
-//         throw std::runtime_error("Failed to enumerate child items of the selected device.");
-//     }
+    IEnumWIA_DEV_CAPS *pEnumCaps = nullptr;
+    HRESULT hr = device->EnumDeviceCapabilities(WIA_DEVICE_COMMANDS, &pEnumCaps);
 
-//     // Step 2: Retrieve the first child item (assuming it's the scanner item)
-//     IWiaItem* scannerItem = nullptr;
-//     ULONG fetched = 0;
-//     hr = enumWiaItem->Next(1, &scannerItem, &fetched);
-//     enumWiaItem->Release(); // Release the enumerator after retrieving the item
+    if (FAILED(hr)) {
+        std::cerr << "printDeviceProperties: Failed to enumerate device properties. HRESULT: " << std::hex << hr << std::endl;
+        return;
+    }
 
-//     if (FAILED(hr) || !scannerItem) {
-//         throw std::runtime_error("No scanner item found in the selected device.");
-//     }
+    IWiaPropertyStorage *pStorage = nullptr;
+    hr = device->QueryInterface(IID_IWiaPropertyStorage, (void **)&pStorage);
+    if (FAILED(hr)) {
+        std::cerr << "printDeviceProperties: Failed to get property storage. HRESULT: " << std::hex << hr << std::endl;
+        return;
+    }
 
-//     // Step 3: Use the scanner item to transfer image data
-//     IWiaDataTransfer* dataTransfer = nullptr;
-//     hr = scannerItem->QueryInterface(IID_IWiaDataTransfer, (void**)&dataTransfer);
-//     scannerItem->Release(); // Release scannerItem after obtaining data transfer interface
+    IEnumSTATPROPSTG *pEnumProps = nullptr;
+    hr = pStorage->Enum(&pEnumProps);
+    if (FAILED(hr)) {
+        std::cerr << "printDeviceProperties: Failed to enumerate properties. HRESULT: " << std::hex << hr << std::endl;
+        pStorage->Release();
+        return;
+    }
 
-//     if (FAILED(hr)) {
-//         throw std::runtime_error("Failed to get IWiaDataTransfer interface from the scanner item.");
-//     }
+    STATPROPSTG propStat = {};
+    while (pEnumProps->Next(1, &propStat, nullptr) == S_OK) {
+        PROPSPEC propSpec = {PRSPEC_PROPID, propStat.propid};
+        PROPVARIANT propVar = {};
 
-//     // Step 4: Set up a memory stream for data transfer
-//     IStream* memoryStream = nullptr;
-//     hr = CreateStreamOnHGlobal(nullptr, TRUE, &memoryStream);
-//     if (FAILED(hr)) {
-//         dataTransfer->Release();
-//         throw std::runtime_error("Failed to create memory stream for image transfer.");
-//     }
+        hr = pStorage->ReadMultiple(1, &propSpec, &propVar);
+        if (SUCCEEDED(hr)) {
+            std::wcout << L"Property ID: " << propStat.propid << L", Name: " << propStat.lpwstrName << L", Value: ";
 
-//     WIA_DATA_TRANSFER_INFO transferInfo = {};
-//     transferInfo.ulSize = sizeof(WIA_DATA_TRANSFER_INFO);
-//     transferInfo.ulBufferSize = 1024 * 1024; // Adjust buffer size if needed
+            switch (propVar.vt) {
+            case VT_BSTR:
+                std::wcout << propVar.bstrVal;
+                break;
+            case VT_I4:
+                std::wcout << propVar.lVal;
+                break;
+            case VT_UI4:
+                std::wcout << propVar.ulVal;
+                break;
+            case VT_BOOL:
+                std::wcout << (propVar.boolVal ? L"True" : L"False");
+                break;
+            case VT_EMPTY:
+                std::wcout << L"(Empty)";
+                break;
+            default:
+                std::wcout << L"(Unhandled type)";
+                break;
+            }
 
-//     hr = dataTransfer->idtGetData(&transferInfo, memoryStream);
-//     dataTransfer->Release();
+            std::wcout << std::endl;
+            PropVariantClear(&propVar);
+        }
 
-//     if (FAILED(hr)) {
-//         memoryStream->Release();
-//         throw std::runtime_error("Image transfer failed.");
-//     }
+        CoTaskMemFree(propStat.lpwstrName);
+    }
 
-//     // Step 5: Convert memory stream to cv::Mat
-//     LARGE_INTEGER li = {0};
-//     ULARGE_INTEGER uli = {0};
-//     hr = memoryStream->Seek(li, STREAM_SEEK_END, &uli);
-//     if (FAILED(hr)) {
-//         memoryStream->Release();
-//         throw std::runtime_error("Failed to seek to end of memory stream.");
-//     }
+    pEnumProps->Release();
+    pStorage->Release();
+}
 
-//     size_t imageSize = static_cast<size_t>(uli.QuadPart);
-//     hr = memoryStream->Seek(li, STREAM_SEEK_SET, nullptr);
-//     if (FAILED(hr)) {
-//         memoryStream->Release();
-//         throw std::runtime_error("Failed to reset memory stream position.");
-//     }
+void WiaScanner::getDpiConstraints() {
+    IWiaItem *device = selectedDevice;
 
-//     std::vector<BYTE> buffer(imageSize);
-//     ULONG bytesRead = 0;
-//     hr = memoryStream->Read(buffer.data(), imageSize, &bytesRead);
-//     memoryStream->Release();
+    if (!device) {
+        std::cerr << "getResolutionRange: Device is not initialized." << std::endl;
+        return;
+    }
 
-//     if (FAILED(hr) || bytesRead != imageSize) {
-//         throw std::runtime_error("Failed to read image data from memory stream.");
-//     }
+    IWiaPropertyStorage *pStorage = nullptr;
+    HRESULT hr = device->QueryInterface(IID_IWiaPropertyStorage, (void **)&pStorage);
+    if (FAILED(hr)) {
+        std::cerr << "getResolutionRange: Failed to get property storage. HRESULT: " << std::hex << hr << std::endl;
+        return;
+    }
 
-//     cv::Mat image = cv::imdecode(buffer, cv::IMREAD_COLOR);
-//     if (image.empty()) {
-//         throw std::runtime_error("Failed to decode image data.");
-//     }
+    PROPSPEC propSpecs[2] = {
+        {PRSPEC_PROPID, WIA_IPS_XRES}, // Horizontal resolution
+        {PRSPEC_PROPID, WIA_IPS_YRES}  // Vertical resolution
+    };
 
-//     return image;
-// }
+    for (int i = 0; i < 2; ++i) {
+        PROPVARIANT propVar = {};
+        ULONG accessFlags = 0;
+        PROPVARIANT attrVar = {};
 
+        // Retrieve the property attributes
+        hr = pStorage->GetPropertyAttributes(1, &propSpecs[i], &accessFlags, &attrVar);
+        if (SUCCEEDED(hr) && attrVar.vt == VT_I4) {
+            LONG minValue = LOWORD(attrVar.ulVal); // Minimum resolution
+            LONG maxValue = HIWORD(attrVar.ulVal); // Maximum resolution
+            LONG stepValue = attrVar.ulVal >> 16;  // Step value (if supported)
+
+            std::wcout << (i == 0 ? L"Horizontal" : L"Vertical") << L" Resolution Range:" << std::endl;
+            std::wcout << L"  Min: " << minValue << L" DPI" << std::endl;
+            std::wcout << L"  Max: " << maxValue << L" DPI" << std::endl;
+            std::wcout << L"  Step: " << stepValue << L" DPI" << std::endl;
+        } else {
+            std::cerr << "getResolutionRange: Failed to get attributes for "
+                      << (i == 0 ? "Horizontal" : "Vertical") << " resolution. HRESULT: " << std::hex << hr << std::endl;
+        }
+
+        PropVariantClear(&propVar);
+        PropVariantClear(&attrVar);
+    }
+
+    if (pStorage) {
+        pStorage->Release();
+    }
+}
+
+void WiaScanner::setDpi(int dpi) {
+    IWiaItem *device = selectedDevice;
+    if (!device) {
+        std::cerr << "setDpi: Device is not initialized." << std::endl;
+        return;
+    }
+
+    IWiaPropertyStorage *pStorage = nullptr;
+    HRESULT hr = device->QueryInterface(IID_IWiaPropertyStorage, (void **)&pStorage);
+    if (FAILED(hr)) {
+        std::cerr << "setDpi: Failed to get property storage. HRESULT: " << std::hex << hr << std::endl;
+        return;
+    }
+
+    PROPSPEC propSpec = {PRSPEC_PROPID, WIA_IPS_XRES}; // DPI property
+    PROPVARIANT propVar = {};
+    propVar.vt = VT_I4;
+    propVar.lVal = dpi;
+
+    hr = pStorage->WriteMultiple(1, &propSpec, &propVar, 0);
+    if (SUCCEEDED(hr)) {
+        std::wcout << L"setDpi: DPI successfully set to " << dpi << L"DPI." << std::endl;
+    } else {
+        std::cerr << "setDpi: Failed to set DPI. HRESULT: " << std::hex << hr << std::endl;
+    }
+
+    if (pStorage) {
+        pStorage->Release();
+    }
+}
+
+// Function to get color options and the current color setting
+void WiaScanner::getColorOptions() {
+    IWiaItem *device = selectedDevice;
+    if (!device) {
+        std::cerr << "getColorOptions: Device is not initialized." << std::endl;
+        return;
+    }
+
+    IWiaPropertyStorage *pStorage = nullptr;
+    HRESULT hr = device->QueryInterface(IID_IWiaPropertyStorage, (void **)&pStorage);
+    if (FAILED(hr)) {
+        std::cerr << "getColorOptions: Failed to get property storage. HRESULT: " << std::hex << hr << std::endl;
+        return;
+    }
+
+    PROPSPEC propSpec = {PRSPEC_PROPID, WIA_IPA_DATATYPE}; // Color property
+    PROPVARIANT propVar = {};
+    hr = pStorage->ReadMultiple(1, &propSpec, &propVar);
+
+    if (SUCCEEDED(hr) && propVar.vt == VT_I4) {
+        std::wstring currentSetting;
+        switch (propVar.lVal) {
+        case WIA_DATA_COLOR:
+            currentSetting = L"Color";
+            break;
+        case WIA_DATA_GRAYSCALE:
+            currentSetting = L"Grayscale";
+            break;
+        case WIA_DATA_THRESHOLD:
+            currentSetting = L"Black and White";
+            break;
+        default:
+            currentSetting = L"Unknown";
+            break;
+        }
+        std::wcout << L"Current Color Option: " << currentSetting << std::endl;
+
+        std::wcout << L"Available Color Options: Color, Grayscale, Black and White" << std::endl;
+    } else {
+        std::cerr << "getColorOptions: Failed to read current color option. HRESULT: " << std::hex << hr << std::endl;
+    }
+
+    if (pStorage) {
+        PropVariantClear(&propVar);
+        pStorage->Release();
+    }
+}
+
+// Function to set the color option
+void WiaScanner::setColorOption(int colorOption) {
+    switch (colorOption) {
+    case 1:
+        colorOption = WIA_DATA_COLOR;
+        break;
+    case 2:
+        colorOption = WIA_DATA_GRAYSCALE;
+        break;
+    case 3:
+        colorOption = WIA_DATA_THRESHOLD;
+        break;
+
+    default:
+        break;
+    }
+
+    IWiaItem *device = selectedDevice;
+    if (!device) {
+        std::cerr << "setColorOption: Device is not initialized." << std::endl;
+        return;
+    }
+
+    IWiaPropertyStorage *pStorage = nullptr;
+    HRESULT hr = device->QueryInterface(IID_IWiaPropertyStorage, (void **)&pStorage);
+    if (FAILED(hr)) {
+        std::cerr << "setColorOption: Failed to get property storage. HRESULT: " << std::hex << hr << std::endl;
+        return;
+    }
+
+    PROPSPEC propSpec = {PRSPEC_PROPID, WIA_IPA_DATATYPE}; // Color property
+    PROPVARIANT propVar = {};
+    propVar.vt = VT_I4;
+    propVar.lVal = colorOption;
+
+    hr = pStorage->WriteMultiple(1, &propSpec, &propVar, 0);
+    if (SUCCEEDED(hr)) {
+        std::wcout << L"setColorOption: Color option successfully set." << std::endl;
+    } else {
+        std::cerr << "setColorOption: Failed to set color option. HRESULT: " << std::hex << hr << std::endl;
+    }
+
+    if (pStorage) {
+        pStorage->Release();
+    }
+}
 #endif // _WIN32

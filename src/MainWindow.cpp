@@ -7,12 +7,12 @@
 #include "ScanProcessor.h"
 #include "ScannerInterface.h"
 
+#include "ImageSaver.h"
 #include <QDebug>
 #include <QFileDialog>
 #include <QGraphicsRectItem>
 #include <QListWidget>
 #include <QMessageBox>
-#include "ImageSaver.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -78,6 +78,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->dateTimeEdit, &QDateTimeEdit::dateTimeChanged, [this](const QDateTime &dateTime) {
         imageDateTime = dateTime;
     });
+
+    connect(ui->comboColor, SIGNAL(currentIndexChanged(int)), this, SLOT(onColorOptionChanged(int)));
+    connect(ui->comboDPI, SIGNAL(currentIndexChanged(int)), this, SLOT(onDpiOptionChanged(int)));
 
     onFindScannerButtonClicked();
 
@@ -182,7 +185,6 @@ void MainWindow::onSaveButtonClicked() {
 
         imageSaver.saveImage(croppedImages[i], file_path_name, dateTimeString);
     }
-
 }
 
 void MainWindow::onFindScannerButtonClicked() {
@@ -223,6 +225,34 @@ void MainWindow::onScannerSelectionChanged(QString scannerName) {
     std::cout << "Selected scanner: " << scannerName.toStdString() << std::endl;
 
     scanner->setPreferredScanner(scannerNameW);
+
+    ui->groupProperties->setEnabled(true);
+}
+
+void MainWindow::onColorOptionChanged(int index) {
+    if (index > 0) {
+        scanner->setColorOption(index);
+    }
+}
+
+void MainWindow::onDpiOptionChanged(int index) {
+    switch (index) {
+    case 1:
+        scanner->setDpi(100);
+        break;
+    case 2:
+        scanner->setDpi(200);
+        break;
+    case 3:
+        scanner->setDpi(300);
+        break;
+    case 4:
+        scanner->setDpi(600);
+        break;
+
+    default:
+        break;
+    }
 }
 
 void MainWindow::updateThumbnailsList(std::vector<std::vector<cv::Point>> quads) {

@@ -49,7 +49,7 @@ CroppedViewItem::CroppedViewItem(const QPixmap &pixmap, QWidget *parent)
 }
 
 void CroppedViewItem::resizeEvent(QResizeEvent *event) {
-    qDebug() << "Item Resize Event w:" << width() << " h:" << height();
+    // qDebug() << "Item Resize Event w:" << width() << " h:" << height();
     // if (!originalPixmap.isNull()) {
     //     QPixmap scaledPixmap = originalPixmap.scaled(
     //         QSize(imageLabel->width() * 100, imageLabel->height()), Qt::KeepAspectRatio, Qt::SmoothTransformation);
@@ -61,7 +61,7 @@ void CroppedViewItem::resizeEvent(QResizeEvent *event) {
 }
 
 void CroppedViewItem::manualResize(int viewHeight) {
-    qDebug() << "Item Manual Resize w:" << width() << " h:" << height() << "viewH:" << viewHeight;
+    // qDebug() << "Item Manual Resize w:" << width() << " h:" << height() << "viewH:" << viewHeight;
     if (!originalPixmap.isNull()) {
         QPixmap scaledPixmap = originalPixmap.scaled(
             QSize(imageLabel->width() * 100, viewHeight), Qt::KeepAspectRatio, Qt::SmoothTransformation);
@@ -117,7 +117,7 @@ void CroppedView::addImageItem(const QPixmap &pixmap, int index) {
 }
 
 void CroppedView::resizeEvent(QResizeEvent *event) {
-    qDebug() << "Resize Event w:" << width() << " h:" << height();
+    // qDebug() << "Resize Event w:" << width() << " h:" << height();
     QListWidget::resizeEvent(event);
 
     manualResize();

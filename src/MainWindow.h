@@ -27,6 +27,8 @@ private slots:
     void onSaveButtonClicked();
     void onFindScannerButtonClicked();
     void onScannerSelectionChanged(QString scannerName);
+    void onColorOptionChanged(int index);
+    void onDpiOptionChanged(int index);
     void updateThumbnailsList(std::vector<std::vector<cv::Point>> quads);
 
 private:

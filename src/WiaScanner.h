@@ -27,6 +27,11 @@ public:
     std::map<std::wstring, std::wstring> getAllScannerProperties() ;
     void setScannerProperty(const std::wstring& propertyName, const std::wstring& value) ;
     cv::Mat scanImage() override;
+    void getDpiConstraints();
+    void getColorOptions();
+    void setDpi(int dpi) override;
+    void setColorOption(int colorOption) override;
+
 
 private:
     IWiaDevMgr* wiaDevMgr = nullptr;
@@ -36,6 +41,8 @@ private:
     IWiaItem* findDeviceByName(const std::wstring& name);
     HRESULT initialize();
     void cleanup();
+
+    static void printDeviceProperties(IWiaItem *device);
 };
 
 #endif // _WIN32

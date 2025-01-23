@@ -19,7 +19,8 @@ public:
     virtual void setPreferredScanner(const std::wstring& scannerName) = 0;
     // virtual std::map<std::wstring, std::wstring> getAllScannerProperties();
     // virtual void setScannerProperty(const std::wstring& propertyName, const std::wstring& value);
-
+    virtual void setDpi(int dpi) = 0;
+    virtual void setColorOption(int colorOption) = 0;
 
     // Static factory: returns appropriate scanner for the current platform
     static std::unique_ptr<ScannerInterface> createScanner();
