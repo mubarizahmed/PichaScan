@@ -3,6 +3,7 @@
 #include "ScannerInterface.h"
 #include "ui_MainWindow.h"
 #include <QMainWindow>
+#include "Project.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -17,7 +18,7 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(std::string path, QWidget *parent = nullptr);
     ~MainWindow();
     
 public slots:
@@ -39,18 +40,20 @@ private slots:
 private:
     Ui::MainWindow *ui;
 
+    Project::ProjectData projectData;
+    std::string projectPath;
+
     std::unique_ptr<ScannerInterface> scanner;
     ImageEditorView *scanView;
     QGraphicsScene *scanScene;
     CroppedView *croppedView;
 
     cv::Mat scanImage;
-    int scanOrientation;
+
     std::vector<cv::Mat> croppedImages;
     std::vector<int> croppedOrientation;
 
-    QDateTime imageDateTime;
-    std::pair<double, double> imageLocation;
+    void saveProjectData();
 
     static void displayMatInGraphicsView(const cv::Mat &mat, ImageEditorView *graphicsView, QGraphicsScene *scene);
     static QImage matToQImage(const cv::Mat &mat);
