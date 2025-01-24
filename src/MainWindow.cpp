@@ -258,9 +258,9 @@ void MainWindow::onSaveButtonClicked() {
 
         QDateTime *dt = new QDateTime(QDateTime::fromString(QString::fromStdString(projectData.imageDateTime), Qt::ISODate));
 
-        // add 10 seconds
-        dt->addSecs(60);
-        ui->dateTimeEdit->setDateTime(*dt);
+        // add 60 seconds
+        QDateTime newDateTime = dt->addSecs(60);
+        ui->dateTimeEdit->setDateTime(newDateTime);
 
         imageSaver.saveImage(croppedImages[i], file_path_name, QString::fromStdString(projectData.imageDateTime), projectData.imageLocation);
     }
