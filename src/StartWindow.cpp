@@ -14,6 +14,7 @@ StartWindow::StartWindow(QWidget *parent)
     ui->setupUi(this);
 
     connect(ui->btnNewProj, &QPushButton::clicked, this, &StartWindow::onNewProjClicked);
+    connect(ui->btnOpenProj, &QPushButton::clicked, this, &StartWindow::onOpenProjClicked);
 
     show();
 }
@@ -73,5 +74,34 @@ void StartWindow::onNewProjClicked() {
         emit projectOpen(projectPathStd);
     } else {
         QMessageBox::critical(this, "Error", "Failed to create the project folder. Please try again.");
+    }
+}
+
+void StartWindow::onOpenProjClicked() {
+    // Open a dialog to select a project.json file
+    QString selectedFile = QFileDialog::getOpenFileName(
+        this,
+        "Select Project File",
+        QDir::homePath(),
+        "Project Files (project.json)"
+    );
+
+    // Check if the user canceled the file selection
+    if (selectedFile.isEmpty()) {
+        return; // User canceled
+    }
+
+    // Get the folder path from the selected file
+    QFileInfo fileInfo(selectedFile);
+    QString folderPath = fileInfo.absolutePath();
+
+    // Convert folder path to std::string
+    std::string folderPathStd = folderPath.toStdString();
+
+    // Check if the project is valid using Project::checkProject
+    if (Project::checkProject(folderPathStd)) {
+        emit projectOpen(folderPathStd); // Emit signal if the project is valid
+    } else {
+        QMessageBox::critical(this, "Error", "The selected project is invalid. Please choose a valid project folder.");
     }
 }

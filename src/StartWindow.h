@@ -21,4 +21,5 @@ private:
     Ui::StartWindow *ui;
 
     void onNewProjClicked();
+    void onOpenProjClicked();
 };

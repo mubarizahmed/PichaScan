@@ -127,8 +127,8 @@ bool Project::checkProject(const std::string &folderPath) {
     }
 
     QJsonObject imageLocationObj = obj["imageLocation"].toObject();
-    if (!imageLocationObj.contains("x") || !imageLocationObj.contains("y") ||
-        !imageLocationObj["x"].isDouble() || !imageLocationObj["y"].isDouble()) {
+    if (!imageLocationObj.contains("lat") || !imageLocationObj.contains("lon") ||
+        !imageLocationObj["lat"].isDouble() || !imageLocationObj["lon"].isDouble()) {
         return false;
     }
 
