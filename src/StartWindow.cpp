@@ -82,7 +82,7 @@ void StartWindow::onOpenProjClicked() {
     QString selectedFile = QFileDialog::getOpenFileName(
         this,
         "Select Project File",
-        QDir::homePath(),
+        QDir::homePath() + "/Pictures/PichaScan/",
         "Project Files (project.json)"
     );
 

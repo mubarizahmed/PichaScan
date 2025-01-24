@@ -265,6 +265,11 @@
            <height>0</height>
           </size>
          </property>
+         <item>
+          <property name="text">
+           <string>-</string>
+          </property>
+         </item>
         </widget>
        </item>
        <item row="0" column="0">

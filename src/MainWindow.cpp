@@ -58,9 +58,24 @@ MainWindow::MainWindow(std::string path, QWidget *parent)
     delete ui->scanView;
     ui->scanView = scanView;
 
+    
+
+    onFindScannerButtonClicked();
+
+    // select the scanner from the combo box from projectData.scannerName
+    int index = ui->comboScanners->findText(QString::fromStdString(projectData.scannerName));
+    if (index != -1) {
+        ui->comboScanners->setCurrentIndex(index);
+    } else {
+        ui->comboScanners->setCurrentIndex(0);
+    }
+
+    // set the time
+    QDateTime dateTime = QDateTime::fromString(QString::fromStdString(projectData.imageDateTime), Qt::ISODate);
+    ui->dateTimeEdit->setDateTime(dateTime);
+
     // Suppose you have a QPushButton named scanButton in your .ui
-    connect(ui->btnScan, &QPushButton::clicked,
-            this, &MainWindow::onScanButtonClicked);
+    connect(ui->btnScan, &QPushButton::clicked, this, &MainWindow::onScanButtonClicked);
     connect(ui->btnSave, &QPushButton::clicked, this, &MainWindow::onSaveButtonClicked);
 
     connect(ui->btnFindScanners, &QPushButton::clicked, this, &MainWindow::onFindScannerButtonClicked);
@@ -93,8 +108,6 @@ MainWindow::MainWindow(std::string path, QWidget *parent)
 
     connect(ui->comboColor, SIGNAL(currentIndexChanged(int)), this, SLOT(onColorOptionChanged(int)));
     connect(ui->comboDPI, SIGNAL(currentIndexChanged(int)), this, SLOT(onDpiOptionChanged(int)));
-
-    onFindScannerButtonClicked();
 
     croppedView = new CroppedView(this);
     // croppedView->setGeometry(ui->listThumbnails->geometry());
@@ -194,11 +207,17 @@ void MainWindow::onScanButtonClicked() {
         QMessageBox::warning(this, "Error", "No suitable scanner backend found!");
         return;
     }
-
+    cv::Mat scannedImage;
     // Perform the scan (returns a large image that might contain multiple photos)
-    cv::Mat scannedImage = scanner->scanImage();
+    try {
+        scannedImage = scanner->scanImage();
+    } catch (const std::exception &e) {
+        QMessageBox::warning(this, "Error", "Failed to scan.");
+        return;
+    }
+
     if (scannedImage.empty()) {
-        QMessageBox::warning(this, "Error", "Failed to scan or no image returned.");
+        QMessageBox::warning(this, "Error", "No image returned.");
         return;
     }
 
@@ -210,6 +229,7 @@ void MainWindow::onScanButtonClicked() {
 
     // Display the scanned image in the graphics view
     MainWindow::displayMatInGraphicsView(scanResult.annotated, scanView, scanScene);
+    scanView->rotate(projectData.scanOrientation);
 
     // Add rectangles to the scanScene
     std::vector<std::vector<cv::Point>> quads;
@@ -238,7 +258,6 @@ void MainWindow::onSaveButtonClicked() {
 
         QDateTime *dt = new QDateTime(QDateTime::fromString(QString::fromStdString(projectData.imageDateTime), Qt::ISODate));
 
-
         // add 10 seconds
         dt->addSecs(60);
         ui->dateTimeEdit->setDateTime(*dt);
@@ -250,77 +269,107 @@ void MainWindow::onSaveButtonClicked() {
 }
 
 void MainWindow::onFindScannerButtonClicked() {
-    if (!scanner) {
-        scanner = ScannerInterface::createScanner();
+    try {
+        if (!scanner) {
+            scanner = ScannerInterface::createScanner();
+        }
+
+        if (!scanner) {
+            QMessageBox::warning(this, "Error", "No suitable scanner backend found!");
+            return;
+        }
+
+        // std::vector<std::wstring> scanners = scanner->getAvailableScanners();
+        std::vector<std::wstring> scanners = scanner->getAvailableScanners();
+
+        if (scanners.empty()) {
+            QMessageBox::information(this, "Info", "No scanners found.");
+            return;
+        }
+
+        // add to combo box
+        QStringList scannerList;
+        scannerList += QString("-");
+        for (const auto &scanner : scanners) {
+            scannerList += QString::fromStdWString(scanner);
+        }
+
+        ui->comboScanners->clear();
+        ui->comboScanners->addItems(scannerList);
+    } catch (const std::exception &e) {
+        QMessageBox::warning(this, "Initialization Error", QString::fromStdString(e.what()));
     }
-
-    if (!scanner) {
-        QMessageBox::warning(this, "Error", "No suitable scanner backend found!");
-        return;
-    }
-
-    // std::vector<std::wstring> scanners = scanner->getAvailableScanners();
-    std::vector<std::wstring> scanners = scanner->getAvailableScanners();
-
-    if (scanners.empty()) {
-        QMessageBox::information(this, "Info", "No scanners found.");
-        return;
-    }
-
-    // add to combo box
-    QStringList scannerList;
-    for (const auto &scanner : scanners) {
-        scannerList += QString::fromStdWString(scanner);
-    }
-
-    ui->comboScanners->addItems(scannerList);
 }
 
 void MainWindow::onScannerSelectionChanged(QString scannerName) {
-    if (!scanner) {
-        QMessageBox::warning(this, "Error", "No suitable scanner backend found!");
+    if (scannerName == "-") {
+        ui->btnScan->setEnabled(false);
+        ui->groupProperties->setEnabled(false);
         return;
     }
+    try {
+        if (!scanner) {
+            QMessageBox::warning(this, "Error", "No suitable scanner backend found!");
+            return;
+        }
 
-    std::wstring scannerNameW = scannerName.toStdWString();
+        std::wstring scannerNameW = scannerName.toStdWString();
 
-    projectData.scannerName = scannerName.toStdString();
+        projectData.scannerName = scannerName.toStdString();
 
-    std::cout << "Selected scanner: " << scannerName.toStdString() << std::endl;
+        std::cout << "Selected scanner: " << scannerName.toStdString() << std::endl;
 
-    scanner->setPreferredScanner(scannerNameW);
+        scanner->setPreferredScanner(scannerNameW);
 
-    ui->groupProperties->setEnabled(true);
+        ui->btnScan->setEnabled(true);
+        ui->groupProperties->setEnabled(true);
+    } catch (const std::exception &e) {
+        QMessageBox::warning(this, "Error", QString::fromStdString(e.what()));
+        ui->groupProperties->setEnabled(false);
+        ui->comboScanners->setCurrentIndex(0);
+        ui->btnScan->setEnabled(false);
+    }
 }
 
 void MainWindow::onColorOptionChanged(int index) {
     if (index > 0) {
-        scanner->setColorOption(index);
-        projectData.scannerColor = index;
+        try {
+            scanner->setColorOption(index);
+            projectData.scannerColor = index;
+        } catch (const std::exception &e) {
+            QMessageBox::warning(this, "Error", QString::fromStdString(e.what()));
+            projectData.scannerColor = 0;
+            ui->comboColor->setCurrentIndex(0);
+        }
     }
 }
 
 void MainWindow::onDpiOptionChanged(int index) {
-    switch (index) {
-    case 1:
-        scanner->setDpi(100);
-        projectData.scannerDpi = 100;
-        break;
-    case 2:
-        scanner->setDpi(200);
-        projectData.scannerDpi = 200;
-        break;
-    case 3:
-        scanner->setDpi(300);
-        projectData.scannerDpi = 300;
-        break;
-    case 4:
-        scanner->setDpi(600);
-        projectData.scannerDpi = 600;
-        break;
+    try {
+        switch (index) {
+        case 1:
+            scanner->setDpi(100);
+            projectData.scannerDpi = 100;
+            break;
+        case 2:
+            scanner->setDpi(200);
+            projectData.scannerDpi = 200;
+            break;
+        case 3:
+            scanner->setDpi(300);
+            projectData.scannerDpi = 300;
+            break;
+        case 4:
+            scanner->setDpi(600);
+            projectData.scannerDpi = 600;
+            break;
 
-    default:
-        break;
+        default:
+            break;
+        }
+    } catch (const std::exception &e) {
+        QMessageBox::warning(this, "Error", QString::fromStdString(e.what()));
+        ui->comboDPI->setCurrentIndex(0);
     }
 }
 
@@ -331,7 +380,7 @@ void MainWindow::updateThumbnailsList(std::vector<std::vector<cv::Point>> quads)
 
     if (croppedOrientation.size() != quads.size()) {
         // Check if all elements in croppedOrientation are the same
-        int initializeValue = -1;
+        int initializeValue = projectData.scanOrientation;
         if (!croppedOrientation.empty() &&
             std::all_of(croppedOrientation.begin(), croppedOrientation.end(),
                         [this](int val) { return val == croppedOrientation.front(); })) {

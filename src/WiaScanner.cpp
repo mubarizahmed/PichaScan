@@ -28,47 +28,40 @@ WiaScanner::~WiaScanner() {
 
 HRESULT WiaScanner::initialize() {
     std::cout << "initialize: Starting COM initialization..." << std::endl;
+
     HRESULT hr = CoInitialize(nullptr);
     if (FAILED(hr)) {
-        std::cerr << "initialize: CoInitialize failed with HRESULT: " << std::hex << hr << std::endl;
-        return hr;
+        throw std::runtime_error("CoInitialize failed with HRESULT: " + std::to_string(hr));
     }
 
     std::cout << "initialize: Creating WIA Device Manager instance..." << std::endl;
-    hr = CoCreateInstance(CLSID_WiaDevMgr, nullptr, CLSCTX_LOCAL_SERVER, IID_IWiaDevMgr, (void **)&wiaDevMgr);
 
+    hr = CoCreateInstance(CLSID_WiaDevMgr, nullptr, CLSCTX_LOCAL_SERVER, IID_IWiaDevMgr, (void **)&wiaDevMgr);
     if (FAILED(hr)) {
-        std::cerr << "initialize: CoCreateInstance failed with HRESULT: " << std::hex << hr << std::endl;
         CoUninitialize();
-        return hr;
+        throw std::runtime_error("CoCreateInstance failed with HRESULT: " + std::to_string(hr));
     }
 
     std::cout << "initialize: Populating available scanners..." << std::endl;
+
     try {
         populateAvailableScanners();
     } catch (const std::exception &e) {
-        std::cerr << "initialize: Exception during populateAvailableScanners - " << e.what() << std::endl;
         cleanup();
-        return E_FAIL;
+        CoUninitialize();
+        throw std::runtime_error("Exception during populateAvailableScanners: " + std::string(e.what()));
     }
 
     if (availableScanners.empty()) {
-        std::cerr << "initialize: No scanners found!" << std::endl;
         cleanup();
-        return E_FAIL;
-    }
-
-    std::cout << "initialize: Selecting the first scanner..." << std::endl;
-    selectedDevice = findDeviceByName(availableScanners.at(0));
-    if (!selectedDevice) {
-        std::cerr << "initialize: Failed to find device by name." << std::endl;
-        cleanup();
-        return E_FAIL;
+        CoUninitialize();
+        throw std::runtime_error("No scanners found.");
     }
 
     std::cout << "initialize: Initialization complete." << std::endl;
     return hr;
 }
+
 
 void WiaScanner::cleanup() {
     if (selectedDevice) {
@@ -541,15 +534,13 @@ void WiaScanner::getDpiConstraints() {
 void WiaScanner::setDpi(int dpi) {
     IWiaItem *device = selectedDevice;
     if (!device) {
-        std::cerr << "setDpi: Device is not initialized." << std::endl;
-        return;
+        throw std::runtime_error("Device is not initialized.");
     }
 
     IWiaPropertyStorage *pStorage = nullptr;
     HRESULT hr = device->QueryInterface(IID_IWiaPropertyStorage, (void **)&pStorage);
     if (FAILED(hr)) {
-        std::cerr << "setDpi: Failed to get property storage. HRESULT: " << std::hex << hr << std::endl;
-        return;
+        throw std::runtime_error("Failed to get property storage. HRESULT: " + std::to_string(hr));
     }
 
     PROPSPEC propSpec = {PRSPEC_PROPID, WIA_IPS_XRES}; // DPI property
@@ -558,16 +549,17 @@ void WiaScanner::setDpi(int dpi) {
     propVar.lVal = dpi;
 
     hr = pStorage->WriteMultiple(1, &propSpec, &propVar, 0);
-    if (SUCCEEDED(hr)) {
-        std::wcout << L"setDpi: DPI successfully set to " << dpi << L"DPI." << std::endl;
-    } else {
-        std::cerr << "setDpi: Failed to set DPI. HRESULT: " << std::hex << hr << std::endl;
+    if (FAILED(hr)) {
+        pStorage->Release();
+        throw std::runtime_error("Failed to set DPI. HRESULT: " + std::to_string(hr));
     }
 
+    // Release property storage if successful
     if (pStorage) {
         pStorage->Release();
     }
 }
+
 
 // Function to get color options and the current color setting
 void WiaScanner::getColorOptions() {
@@ -619,6 +611,7 @@ void WiaScanner::getColorOptions() {
 
 // Function to set the color option
 void WiaScanner::setColorOption(int colorOption) {
+    // Map the input to WIA color options
     switch (colorOption) {
     case 1:
         colorOption = WIA_DATA_COLOR;
@@ -629,22 +622,19 @@ void WiaScanner::setColorOption(int colorOption) {
     case 3:
         colorOption = WIA_DATA_THRESHOLD;
         break;
-
     default:
-        break;
+        throw std::invalid_argument("Invalid color option provided.");
     }
 
     IWiaItem *device = selectedDevice;
     if (!device) {
-        std::cerr << "setColorOption: Device is not initialized." << std::endl;
-        return;
+        throw std::runtime_error("Device is not initialized.");
     }
 
     IWiaPropertyStorage *pStorage = nullptr;
     HRESULT hr = device->QueryInterface(IID_IWiaPropertyStorage, (void **)&pStorage);
     if (FAILED(hr)) {
-        std::cerr << "setColorOption: Failed to get property storage. HRESULT: " << std::hex << hr << std::endl;
-        return;
+        throw std::runtime_error("Failed to get property storage. HRESULT: " + std::to_string(hr));
     }
 
     PROPSPEC propSpec = {PRSPEC_PROPID, WIA_IPA_DATATYPE}; // Color property
@@ -653,14 +643,15 @@ void WiaScanner::setColorOption(int colorOption) {
     propVar.lVal = colorOption;
 
     hr = pStorage->WriteMultiple(1, &propSpec, &propVar, 0);
-    if (SUCCEEDED(hr)) {
-        std::wcout << L"setColorOption: Color option successfully set." << std::endl;
-    } else {
-        std::cerr << "setColorOption: Failed to set color option. HRESULT: " << std::hex << hr << std::endl;
+    if (FAILED(hr)) {
+        pStorage->Release();
+        throw std::runtime_error("Failed to set color option. HRESULT: " + std::to_string(hr));
     }
 
+    // Release storage if successful
     if (pStorage) {
         pStorage->Release();
     }
 }
+
 #endif // _WIN32
