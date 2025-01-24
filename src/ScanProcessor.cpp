@@ -123,7 +123,7 @@ std::vector<cv::Mat> ScanProcessor::cropImages(const cv::Mat &scannedImage,
         // Find the rotated rectangle from the translated quad
         cv::RotatedRect rotRect = cv::minAreaRect(translatedQuad);
 
-        cropped = paddedImage(rotRect.boundingRect()).clone();
+        cropped = cropRotatedRect(paddedImage, rotRect);
 
         // Apply rotation to the cropped region
         if (!cropped.empty() && rotationAngle != 0) {
@@ -173,4 +173,24 @@ double ScanProcessor::findMostNegativeXY(const std::vector<std::vector<cv::Point
     }
 
     return mostNegative;
+}
+
+cv::Mat ScanProcessor::cropRotatedRect(const cv::Mat &image, const cv::RotatedRect &rotRect) {
+    // Get the rotation matrix for the `RotatedRect`
+    cv::Mat rotationMatrix = cv::getRotationMatrix2D(rotRect.center, rotRect.angle, 1.0);
+
+    // Rotate the entire image
+    cv::Mat rotatedImage;
+    cv::warpAffine(image, rotatedImage, rotationMatrix, image.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+
+    cv::Size rectSize = rotRect.size;
+    if (rotRect.angle < -45.0) { // Adjust width/height if needed
+        std::swap(rectSize.width, rectSize.height);
+    }
+    cv::Rect uprightBoundingBox(cv::Point(rotRect.center.x - rectSize.width / 2,
+                                          rotRect.center.y - rectSize.height / 2),
+                                rectSize);
+
+    // Crop the upright rectangle
+    return rotatedImage(uprightBoundingBox & cv::Rect(0, 0, rotatedImage.cols, rotatedImage.rows)).clone();
 }

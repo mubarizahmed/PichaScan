@@ -37,6 +37,7 @@ public:
     std::vector<cv::Mat> cropImages(const cv::Mat &scannedImage, const std::vector<std::vector<cv::Point>>& quads, int scannedRotation, const std::vector<int>& rotations);
 
     static double findMostNegativeXY(const std::vector<std::vector<cv::Point>> &quads);
+    static cv::Mat cropRotatedRect(const cv::Mat& image, const cv::RotatedRect& rotRect);
 };
 
 
