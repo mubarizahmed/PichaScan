@@ -69,11 +69,28 @@ file(GLOB UI_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/ui/*.ui"
 )
 
-add_executable(${PROJECT_NAME} ${SRC_FILES} ${UI_FILES})
+if(WIN32)
+    set(APP_ICON_RESOURCE "${CMAKE_BINARY_DIR}/Logomark.rc")
+    configure_file("${CMAKE_SOURCE_DIR}/res/Logomark.ico" "${CMAKE_BINARY_DIR}/Logomark.ico" COPYONLY)
+    configure_file("${CMAKE_SOURCE_DIR}/res/Logomark.rc" "${APP_ICON_RESOURCE}" COPYONLY)
+    set(SRC_FILES ${SRC_FILES} ${APP_ICON_RESOURCE})
+endif()
 
+if(WIN32)
+    add_executable(${PROJECT_NAME} WIN32 ${SRC_FILES} ${UI_FILES} "${CMAKE_BINARY_DIR}/Logomark.rc")
+else()
+    add_executable(${PROJECT_NAME} ${SRC_FILES} ${UI_FILES})
+endif()
 
 set(qml_resource_files
     "${CMAKE_BINARY_DIR}/map.qml"
+    # "${CMAKE_CURRENT_SOURCE_DIR}/res.qrc"
+    # "${CMAKE_CURRENT_SOURCE_DIR}/res/Logomark.svg"
+)
+
+qt6_add_resources(${PROJECT_NAME} "resources"
+    FILES "res.qrc"
+    "res/Logomark.svg"
 )
 
 set_source_files_properties(${qml_resource_files} PROPERTIES
