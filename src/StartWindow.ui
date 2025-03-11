@@ -13,10 +13,14 @@
   <property name="windowTitle">
    <string>PichaScan</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="qml">
+    <normaloff>:/res/Logomark.svg</normaloff>:/res/Logomark.svg</iconset>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_2">
-    <item row="2" column="1">
-     <spacer name="verticalSpacer_2">
+    <item row="0" column="1">
+     <spacer name="verticalSpacer">
       <property name="orientation">
        <enum>Qt::Orientation::Vertical</enum>
       </property>
@@ -28,22 +32,16 @@
       </property>
      </spacer>
     </item>
-    <item row="1" column="0">
-     <spacer name="horizontalSpacer">
-      <property name="orientation">
-       <enum>Qt::Orientation::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>40</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
     <item row="1" column="1">
      <layout class="QGridLayout" name="gridLayout">
-      <item row="5" column="0">
+      <item row="2" column="0">
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Welcome to</string>
+        </property>
+       </widget>
+      </item>
+      <item row="8" column="0">
        <spacer name="verticalSpacer_3">
         <property name="orientation">
          <enum>Qt::Orientation::Vertical</enum>
@@ -56,7 +54,17 @@
         </property>
        </spacer>
       </item>
-      <item row="6" column="0">
+      <item row="7" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>A utility that helps you scan and tag your old photos. Because memories are precious!</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="0">
        <widget class="QGroupBox" name="groupBox">
         <property name="title">
          <string>Get started</string>
@@ -91,7 +99,7 @@
         </layout>
        </widget>
       </item>
-      <item row="3" column="0">
+      <item row="6" column="0">
        <widget class="QLabel" name="label_2">
         <property name="font">
          <font>
@@ -102,21 +110,32 @@
         <property name="text">
          <string>PichaScan</string>
         </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Welcome to</string>
+        <property name="textFormat">
+         <enum>Qt::TextFormat::AutoText</enum>
         </property>
        </widget>
       </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>A utility that helps you scan and tag your old photos. Because memories are precious!</string>
+      <item row="5" column="0" alignment="Qt::AlignmentFlag::AlignHCenter">
+       <widget class="QLabel" name="label_4">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
-        <property name="wordWrap">
+        <property name="maximumSize">
+         <size>
+          <width>100</width>
+          <height>100</height>
+         </size>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="pixmap">
+         <pixmap resource="../res.qrc">:/res/Logomark.svg</pixmap>
+        </property>
+        <property name="scaledContents">
          <bool>true</bool>
         </property>
        </widget>
@@ -136,8 +155,21 @@
       </property>
      </spacer>
     </item>
-    <item row="0" column="1">
-     <spacer name="verticalSpacer">
+    <item row="1" column="0">
+     <spacer name="horizontalSpacer">
+      <property name="orientation">
+       <enum>Qt::Orientation::Horizontal</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>40</width>
+        <height>20</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+    <item row="2" column="1">
+     <spacer name="verticalSpacer_2">
       <property name="orientation">
        <enum>Qt::Orientation::Vertical</enum>
       </property>
@@ -178,6 +210,9 @@
    </property>
   </action>
  </widget>
- <resources/>
+ <resources>
+  <include location="../res.qrc"/>
+  <include location="../res/res.qrc"/>
+ </resources>
  <connections/>
 </ui>

@@ -1,5 +1,8 @@
 .vscode
 .venv
+
+python
+
 # Ignore build directories
 build
 
