@@ -12,7 +12,7 @@ SolidCompression=yes
 Source: "..\build\release\*"; DestDir: "{app}"; Flags: recursesubdirs
 
 [Icons]
-Name: "{commondesktop}\PichaScan"; Filename: "{app}\PichaScan.exe"; Check: IsNotSilent
+Name: "{commondesktop}\PichaScan"; Filename: "{app}\PichaScan.exe";
 
 [Run]
 Filename: "{app}\PichaScan.exe"; Description: "Launch PichaScan"; Flags: nowait postinstall skipifsilent shellexec
