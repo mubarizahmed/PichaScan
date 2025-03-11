@@ -40,7 +40,7 @@ CMakeLists.txt.user
 *.sdf
 *.suo
 *.pdb
-*.exe
+# *.exe
 *.app
 *.iws
 *.ipr
